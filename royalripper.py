@@ -960,7 +960,7 @@ def make_problem_report(queue_lines=(), item=None):
             "Python: %s%s" % (platform.python_version(), " (built exe)" if getattr(sys, "frozen", False) else ""),
             "Folder: %s" % scrub(BASE_DIR), "", "Tools:"]
     for name in ("yt-dlp", "ffmpeg", "N_m3u8DL-RE", "aria2c", "streamlink", "mkvmerge", "SubtitleEdit",
-                 "jq", "wget", "7zr"):
+                 "7zr"):
         info.append("  %-12s %s" % (name, tool_version(name)))
     settings = load_settings()
     settings["outdir"] = scrub(settings["outdir"])
@@ -1686,20 +1686,11 @@ def save_thumbnail(url, dest, log=lambda t: None):
 
 
 # ------------------------------------------------------------ the Tas Rip Pack's other tools
-# jq, mkvmerge (MKVToolNix) and SubtitleEdit, laid out the way the pack's Extractors folder
-# was (mkvmerge.exe and jq.exe in bin, SubtitleEdit in bin\SubEdit), plus 7zr to unpack MKVToolNix.
+# mkvmerge (MKVToolNix) and SubtitleEdit, laid out the way the pack's Extractors folder
+# was (mkvmerge.exe in bin, SubtitleEdit in bin\SubEdit), plus 7zr to unpack MKVToolNix.
 def _need_windows(name):
     if not IS_WIN:
         raise RuntimeError("%s is only fetched automatically on Windows - install it with your package manager" % name)
-
-
-def install_jq(log):
-    _need_windows("jq")
-    log("Downloading jq ...")
-    url = _github_asset("jqlang/jq", r"^jq-windows-amd64\.exe$")
-    if not url:
-        raise RuntimeError("couldn't find jq's Windows download")
-    fetch(url, os.path.join(BIN_DIR, "jq.exe"), log)
 
 
 def install_7zr(log):
@@ -1744,10 +1735,7 @@ def install_mkvmerge(log):
         found = glob.glob(os.path.join(out, "*", "mkvmerge.exe")) + glob.glob(os.path.join(out, "mkvmerge.exe"))
         if not found:
             raise RuntimeError("mkvmerge.exe wasn't in the download (%s)" % (r.stderr or r.stdout).strip()[-200:])
-        for exe in ("mkvmerge.exe", "mkvextract.exe", "mkvinfo.exe", "mkvpropedit.exe"):
-            src = os.path.join(os.path.dirname(found[0]), exe)
-            if os.path.isfile(src):
-                shutil.copy2(src, os.path.join(BIN_DIR, exe))
+        shutil.copy2(found[0], os.path.join(BIN_DIR, "mkvmerge.exe"))  # 1.0.9: the only one Royal Ripper uses
     finally:
         shutil.rmtree(out, ignore_errors=True)
         if os.path.exists(tmp):
@@ -1787,9 +1775,10 @@ def install_subtitleedit(log):
 
 
 EXTRA_TOOLS = (("mkvmerge", "mkvmerge", "install_mkvmerge"), ("SubtitleEdit", "SubtitleEdit", "install_subtitleedit"),
-               ("jq", "jq", "install_jq"), ("7zr", "7zr", "install_7zr"))
-# 1.0.9: wget is no longer downloaded - nothing in Royal Ripper uses it, and its download site was being
-# flagged by Malwarebytes. Old Tas Rip Pack bats still find a wget.exe that's already in bin or on the PATH.
+               ("7zr", "7zr", "install_7zr"))
+# 1.0.9: wget and jq are no longer downloaded - nothing in Royal Ripper uses them (they were only for old
+# Tas Rip Pack bats), and wget's download site was flagged by Malwarebytes. A wget.exe / jq.exe already in
+# bin or on the PATH is left alone and old bats still find it.
 EXTRA_RETRY_FILE = os.path.join(BIN_DIR, ".extras-tried")
 
 
@@ -1938,9 +1927,10 @@ TOOL_FILES = {
     "N_m3u8DL-RE": (("N_m3u8DL-RE" + EXE,), "install_nm3u8", 7),
     "aria2c": (("aria2c" + EXE,), "install_aria2c", 7),
     "streamlink": (("streamlink",), "install_streamlink", 7),
+    # mkvextract/mkvinfo/mkvpropedit aren't installed any more (1.0.9); still listed so the next mkvmerge
+    # update removes the copies older versions left in bin
     "mkvmerge": (("mkvmerge.exe", "mkvextract.exe", "mkvinfo.exe", "mkvpropedit.exe"), "install_mkvmerge", 7),
     "SubtitleEdit": (("SubEdit",), "install_subtitleedit", 7),
-    "jq": (("jq.exe",), "install_jq", 30),
 }
 
 
@@ -1967,8 +1957,6 @@ def latest_tool_ref(name):
         return _gh_asset_ref("streamlink/windows-builds", r"x86_64\.zip$")
     if name == "SubtitleEdit":
         return _gh_asset_ref("SubtitleEdit/subtitleedit", r"^SE4\d+\.zip$", deep=True)
-    if name == "jq":
-        return _gh_asset_ref("jqlang/jq", r"^jq-windows-amd64\.exe$")
     if name == "mkvmerge":
         page = fetch_text("https://mkvtoolnix.download/windows/releases/", timeout=90)
         vers = re.findall(r'href="(\d+\.\d+(?:\.\d+)?)/"', page)
