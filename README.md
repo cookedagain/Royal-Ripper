@@ -13,7 +13,7 @@ The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria
 **Coming from TasRip?** This is the same app, renamed. See [New in 1.0.8](#new-in-108) below.
 
 **Contents:**
-[New in 1.0.9](#new-in-109) ·
+[New in 1.1.0](#new-in-110) ·
 [New in 1.0.8](#new-in-108) ·
 [First run](#first-run) ·
 [Updating](#updating-to-a-new-version) ·
@@ -33,7 +33,7 @@ The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria
 [Test channels](#test-channels) ·
 [Problems](#problems)
 
-## New in 1.0.9
+## New in 1.1.0
 
 - **.nfo files are now off by default** for new installs. If you already use them, nothing changes - your setting is kept. To turn them on, pick *Scene (text)* or *Kodi / Jellyfin (XML)* next to **.nfo** on the main screen.
 - **Less to download, less on disk:** tools Royal Ripper never actually used are gone.

@@ -41,7 +41,7 @@ except ImportError:  # lets the core logic be imported/tested without a display
 
 APP_NAME = "Royal Ripper"
 APP_ID = "RoyalRipper"  # the name without a space: exe/app file, scene tag, User-Agent
-VERSION = "1.0.9"
+VERSION = "1.1.0"
 IS_WIN = os.name == "nt"
 IS_MAC = sys.platform == "darwin"
 OS_NAME = "Windows" if IS_WIN else "macOS" if IS_MAC else "Linux"
@@ -1735,7 +1735,7 @@ def install_mkvmerge(log):
         found = glob.glob(os.path.join(out, "*", "mkvmerge.exe")) + glob.glob(os.path.join(out, "mkvmerge.exe"))
         if not found:
             raise RuntimeError("mkvmerge.exe wasn't in the download (%s)" % (r.stderr or r.stdout).strip()[-200:])
-        shutil.copy2(found[0], os.path.join(BIN_DIR, "mkvmerge.exe"))  # 1.0.9: the only one Royal Ripper uses
+        shutil.copy2(found[0], os.path.join(BIN_DIR, "mkvmerge.exe"))  # 1.1.0: the only one Royal Ripper uses
     finally:
         shutil.rmtree(out, ignore_errors=True)
         if os.path.exists(tmp):
@@ -1776,7 +1776,7 @@ def install_subtitleedit(log):
 
 EXTRA_TOOLS = (("mkvmerge", "mkvmerge", "install_mkvmerge"), ("SubtitleEdit", "SubtitleEdit", "install_subtitleedit"),
                ("7zr", "7zr", "install_7zr"))
-# 1.0.9: wget and jq are no longer downloaded - nothing in Royal Ripper uses them (they were only for old
+# 1.1.0: wget and jq are no longer downloaded - nothing in Royal Ripper uses them (they were only for old
 # Tas Rip Pack bats), and wget's download site was flagged by Malwarebytes. A wget.exe / jq.exe already in
 # bin or on the PATH is left alone and old bats still find it.
 EXTRA_RETRY_FILE = os.path.join(BIN_DIR, ".extras-tried")
@@ -1927,7 +1927,7 @@ TOOL_FILES = {
     "N_m3u8DL-RE": (("N_m3u8DL-RE" + EXE,), "install_nm3u8", 7),
     "aria2c": (("aria2c" + EXE,), "install_aria2c", 7),
     "streamlink": (("streamlink",), "install_streamlink", 7),
-    # mkvextract/mkvinfo/mkvpropedit aren't installed any more (1.0.9); still listed so the next mkvmerge
+    # mkvextract/mkvinfo/mkvpropedit aren't installed any more (1.1.0); still listed so the next mkvmerge
     # update removes the copies older versions left in bin
     "mkvmerge": (("mkvmerge.exe", "mkvextract.exe", "mkvinfo.exe", "mkvpropedit.exe"), "install_mkvmerge", 7),
     "SubtitleEdit": (("SubEdit",), "install_subtitleedit", 7),
