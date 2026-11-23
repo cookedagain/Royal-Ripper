@@ -1,0 +1,29 @@
+# Personal data - never upload
+settings.json*
+logins.dat
+queue.json*
+history.jsonl*
+watchlist.json*
+archive.txt*
+engines.json*
+*.bak
+*.log
+TasRip-problem-report-*.zip
+TasRip-setup-*.zip
+
+# Downloaded tools and build output (fetched on first start)
+Extractors/
+bin/*
+!bin/yt-dlp-plugins/
+!bin/engines/
+bin/.old/
+build/
+dist/
+*.spec
+TasRip.exe
+__pycache__/
+
+# Mac leftovers
+._*
+.DS_Store
+__MACOSX/
