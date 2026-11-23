@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TasRip (formerly MediaRipper) - a Windows GUI for yt-dlp, successor to the Tas Rip Pack.
+"""Royal Ripper (formerly TasRip, and before that MediaRipper) - a Windows GUI for yt-dlp, successor to the Tas Rip Pack.
 
 Everything lives next to this file (or the built app):
     bin/            yt-dlp, ffmpeg, ffprobe, aria2c, N_m3u8DL-RE (fetched on demand)
@@ -39,7 +39,8 @@ try:
 except ImportError:  # lets the core logic be imported/tested without a display
     tk = None
 
-APP_NAME = "TasRip"
+APP_NAME = "Royal Ripper"
+APP_ID = "RoyalRipper"  # the name without a space: exe/app file, scene tag, User-Agent
 VERSION = "1.0.8"
 IS_WIN = os.name == "nt"
 IS_MAC = sys.platform == "darwin"
@@ -54,7 +55,7 @@ def _base_dir():
         return os.path.dirname(os.path.abspath(__file__))
     d = os.path.dirname(os.path.abspath(sys.executable))
     marker = ".app" + os.sep + "Contents" + os.sep + "MacOS"
-    if IS_MAC and marker in d:  # inside TasRip.app: use the folder the app sits in
+    if IS_MAC and marker in d:  # inside RoyalRipper.app: use the folder the app sits in
         d = os.path.dirname(d[:d.index(marker) + 4])
     return d
 
@@ -263,7 +264,7 @@ def build_args(ytdlp, url, o, login=None):
     return a + ["--", url]
 
 
-AUDIO_WORK = ".tasrip-audio-tmp"
+AUDIO_WORK = ".tasrip-audio-tmp"  # kept from the TasRip days so unfinished downloads still resume
 # What each finished download reports back (its final path, and the details Plex naming needs).
 SAVED_FIELDS = ("%(.{filepath,id,title,series,season_number,episode_number,episode,release_year,"
                 "release_date,upload_date,playlist_title,uploader,channel,description,duration,extractor_key,"
@@ -399,7 +400,7 @@ RECIPES = {
     "7plus.com.au": {"name": "7plus", "nm3u8": True},
     "9now.com.au": {"name": "9Now"},
 }
-WORK_DIR = ".tasrip-work"
+WORK_DIR = ".tasrip-work"  # kept from the TasRip days so unfinished downloads still resume
 LANG3 = {"en": "eng", "fr": "fre", "de": "ger", "es": "spa", "it": "ita", "ja": "jpn", "ko": "kor",
          "zh": "chi", "ar": "ara", "hi": "hin", "vi": "vie", "el": "gre", "pt": "por", "ru": "rus",
          "nl": "dut", "tr": "tur", "th": "tha", "id": "ind", "pl": "pol", "sv": "swe", "da": "dan",
@@ -874,7 +875,7 @@ def _profile_cookies(profile, domain, with_wal, exact=False):
     """Cookie names Firefox has for a site, read from a copy of its cookie database
     (exact: only cookies for the site itself, not its subdomains - what yt-dlp sends)."""
     import sqlite3
-    tmp = tempfile.mkdtemp(prefix="tasrip_ff_")
+    tmp = tempfile.mkdtemp(prefix="royalripper_ff_")
     try:
         for suffix in ("", "-wal", "-shm") if with_wal else ("",):
             src = os.path.join(profile, "cookies.sqlite" + suffix)
@@ -898,7 +899,7 @@ def _profile_cookies(profile, domain, with_wal, exact=False):
 
 def firefox_signin(domain, root=None):
     """How Firefox stands with a site:
-    'ready'         signed in, and TasRip/yt-dlp can read it now
+    'ready'         signed in, and Royal Ripper/yt-dlp can read it now
     'close_firefox' signed in, but Firefox is still holding the new sign-in - close Firefox
     'visited'       Firefox has been to the site but isn't signed in
     'no'            nothing for that site     'noprofile'  no Firefox profile found"""
@@ -948,10 +949,10 @@ def tool_version(name):
 
 
 def make_problem_report(queue_lines=(), item=None):
-    """One zip with recent logs, the latest diagnostic and system details, in the TasRip
+    """One zip with recent logs, the latest diagnostic and system details, in the Royal Ripper
     folder. Emails, tokens and the Windows user name are removed. Returns the zip's path.
     item: a failed queue item - its own full log goes in first, as failed-item.txt."""
-    path = os.path.join(BASE_DIR, "TasRip-problem-report-%s%s.zip" % (
+    path = os.path.join(BASE_DIR, "RoyalRipper-problem-report-%s%s.zip" % (
         "item-" if item else "", time.strftime("%Y%m%d-%H%M%S")))
     info = ["%s v%s problem report - %s" % (APP_NAME, VERSION, time.strftime("%Y-%m-%d %H:%M")),
             "System: %s" % platform.platform(),
@@ -967,7 +968,7 @@ def make_problem_report(queue_lines=(), item=None):
     info += ["", "Site engines: %s" % (load_engines() or "none"),
              "Plugins: %s" % ([n for n, _, _ in installed_plugins()] or "none"),
              "", "Queue:"] + ["  " + scrub(l) for l in queue_lines]
-    logs = sorted(glob.glob(os.path.join(LOG_DIR, "tasrip-*.txt")), key=os.path.getmtime)[-3:]
+    logs = sorted(glob.glob(os.path.join(LOG_DIR, "royalripper-*.txt")), key=os.path.getmtime)[-3:]
     diags = sorted(glob.glob(os.path.join(LOG_DIR, "diagnostic-*.txt")), key=os.path.getmtime)[-1:]
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         if item:
@@ -1495,7 +1496,7 @@ def _lang(st):
 
 
 def release_name(info, probe, audio=False):
-    """Scene-style name, e.g. Bluey.S03E07.Pass.the.Parcel.1080p.iVIEW.WEB-DL.AAC2.0.H.264-TasRip"""
+    """Scene-style name, e.g. Bluey.S03E07.Pass.the.Parcel.1080p.iVIEW.WEB-DL.AAC2.0.H.264-RoyalRipper"""
     dot = lambda t: re.sub(r"\.+", ".", re.sub(r"[^A-Za-z0-9]+", ".", str(t))).strip(".")
     v = next((x for x in probe.get("streams", []) if x.get("codec_type") == "video"
               and not (x.get("disposition") or {}).get("attached_pic")), None)
@@ -1527,7 +1528,7 @@ def release_name(info, probe, audio=False):
         parts.append(_codec_name(a.get("codec_name")) + (_channels(a.get("channels")) if not audio else ""))
     if v and not audio:
         parts.append(_codec_name(v.get("codec_name")))
-    return ".".join(p for p in parts if p) + "-" + APP_NAME
+    return ".".join(p for p in parts if p) + "-" + APP_ID
 
 
 NFO_LOGO = r"""
@@ -1772,7 +1773,7 @@ def install_subtitleedit(log):
     _need_windows("SubtitleEdit")
     log("Downloading SubtitleEdit (portable) ...")
     # SubtitleEdit 5 dropped "SubtitleEdit.exe /convert" (it has a separate SeConv tool), and the
-    # old bats + TasRip use /convert, so get the newest 4.x portable build ("SE4xxx.zip").
+    # old bats + Royal Ripper use /convert, so get the newest 4.x portable build ("SE4xxx.zip").
     url = _github_asset("SubtitleEdit/subtitleedit", r"^SE4\d+\.zip$", deep=True)
     if not url:
         raise RuntimeError("couldn't find SubtitleEdit's portable download")
@@ -2028,7 +2029,7 @@ def update_tool(name, log, busy=lambda: False):
         return "same"
     if name not in versions:
         newest = max(os.path.getmtime(os.path.join(BIN_DIR, f)) for f in have)
-        if time.time() - newest < 30 * 86400:  # installed recently by an older TasRip: just note it
+        if time.time() - newest < 30 * 86400:  # installed recently by an older Royal Ripper: just note it
             versions[name] = ref
             _save_json(TOOL_VERSIONS_FILE, versions)
             return "same"
@@ -2121,7 +2122,7 @@ APPLEDOUBLE = b"\x00\x05\x16\x07"
 
 def clean_mac_junk(root=None, log=lambda t: None):
     """Delete the "._name" and .DS_Store files (and __MACOSX folders) a Mac leaves behind - they
-    once made TasRip pick a fake engine. Only real AppleDouble stubs are removed. -> count"""
+    once made Royal Ripper pick a fake engine. Only real AppleDouble stubs are removed. -> count"""
     root = root or BASE_DIR
     n = 0
     for dirpath, dirs, files in os.walk(root):
@@ -2266,7 +2267,7 @@ def export_setup(dest):
             if os.path.isfile(src):
                 z.write(src, f)
                 n += 1
-        z.writestr("tasrip-setup.txt", "%s v%s setup export - %s\n" % (APP_NAME, VERSION, time.strftime("%Y-%m-%d %H:%M")))
+        z.writestr("royalripper-setup.txt", "%s v%s setup export - %s\n" % (APP_NAME, VERSION, time.strftime("%Y-%m-%d %H:%M")))
     return n
 
 
@@ -2627,11 +2628,11 @@ def list_entries(exe, url, o, log=lambda t: None):
 
 
 # ------------------------------------------------------------ app updates and migration
-OLD_NAMES = ("MediaRipper",)
+OLD_NAMES = ("TasRip", "MediaRipper")
 
 
 def migrate_old_install(log=print):
-    """First start: copy settings, archive, engines and tools from an old MediaRipper folder
+    """First start: copy settings, archive, engines and tools from an old TasRip or MediaRipper folder
     next to this one, so nothing has to be set up or downloaded again. -> list of what was copied"""
     if os.path.isfile(SETTINGS_FILE):
         return []
@@ -2647,7 +2648,8 @@ def migrate_old_install(log=print):
         return []
     old = max(candidates, key=lambda c: os.path.getmtime(os.path.join(c, "settings.json")))
     copied = []
-    for name in ("settings.json", "archive.txt", "engines.json", "history.jsonl", "watchlist.json"):
+    for name in ("settings.json", "archive.txt", "engines.json", "history.jsonl", "watchlist.json",
+                 "queue.json", "logins.dat"):
         src = os.path.join(old, name)
         if os.path.isfile(src) and not os.path.exists(os.path.join(BASE_DIR, name)):
             shutil.copy2(src, os.path.join(BASE_DIR, name))
@@ -2837,7 +2839,7 @@ def parse_progress(line):
 
 # Some PCs have their secure connections inspected by antivirus "HTTPS scanning" or a network
 # filter. Windows trusts the inspector's certificate, but Python's and yt-dlp's own certificate
-# lists don't, so downloads fail with CERTIFICATE_VERIFY_FAILED. When that happens TasRip
+# lists don't, so downloads fail with CERTIFICATE_VERIFY_FAILED. When that happens Royal Ripper
 # downloads with Windows' own curl.exe instead, and tells yt-dlp to use Windows' certificates.
 USE_SYSTEM_CERTS = False
 CERT_CLOCK_WORDS = ("certificate has expired", "not yet valid", "certificate is not yet valid")
@@ -2860,11 +2862,11 @@ def cert_hint(text):
                 "Fix the clock (Settings > Time & language > Set time automatically) and try again.")
     return ("A secure connection was blocked from being checked - usually antivirus 'HTTPS / web "
             "scanning' (Avast, AVG, Kaspersky, ESET, Bitdefender...) or a work/school network filter. "
-            "TasRip will use Windows' own certificate checks instead.")
+            "Royal Ripper will use Windows' own certificate checks instead.")
 
 
 def plugin_args(exe):
-    """Load TasRip's plugins (like the SBS fix) whichever yt-dlp is running - it otherwise
+    """Load Royal Ripper's plugins (like the SBS fix) whichever yt-dlp is running - it otherwise
     only finds them if it sits in the bin folder. Custom site engines are left as they are."""
     if os.path.isdir(PLUGIN_DIR) and not os.path.abspath(exe).startswith(os.path.abspath(ENGINE_DIR)):
         return ["--plugin-dirs", PLUGIN_DIR]
@@ -2887,7 +2889,7 @@ def system_download(url, dest, headers=None, timeout=600):
     """Download with the operating system's own downloader, which uses Windows' certificate
     checks (so it works behind antivirus HTTPS scanning). Raises RuntimeError on failure."""
     headers = dict(headers or {})
-    headers.setdefault("User-Agent", "%s/%s" % (APP_NAME, VERSION))
+    headers.setdefault("User-Agent", "%s/%s" % (APP_ID, VERSION))
     curl = system_curl()
     if curl:
         a = [curl, "-L", "--fail", "--silent", "--show-error", "--retry", "2", "--max-time", str(timeout)]
@@ -2915,14 +2917,14 @@ def system_download(url, dest, headers=None, timeout=600):
 def fetch_text(url, headers=None, timeout=30):
     """GET a page/API as text; falls back to the system downloader on certificate errors."""
     headers = dict(headers or {})
-    headers.setdefault("User-Agent", "%s/%s" % (APP_NAME, VERSION))
+    headers.setdefault("User-Agent", "%s/%s" % (APP_ID, VERSION))
     try:
         with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=timeout) as r:
             return r.read(16 * 1024 * 1024).decode("utf-8", "replace")
     except Exception as e:
         if not is_cert_error(e):
             raise
-    fd, tmp = tempfile.mkstemp(prefix="tasrip_", suffix=".txt")
+    fd, tmp = tempfile.mkstemp(prefix="royalripper_", suffix=".txt")
     os.close(fd)
     os.remove(tmp)
     try:
@@ -2947,7 +2949,7 @@ def fetch(url, dest, log):
                 last[0] = step
                 log("  %d%% of %.1f MB" % (step * 10, total / 1048576))
 
-    req = urllib.request.Request(url, headers={"User-Agent": "%s/%s" % (APP_NAME, VERSION)})
+    req = urllib.request.Request(url, headers={"User-Agent": "%s/%s" % (APP_ID, VERSION)})
     try:
         with urllib.request.urlopen(req, timeout=60) as r, open(tmp, "wb") as f:
             total = int(r.headers.get("Content-Length") or 0)
@@ -2970,7 +2972,7 @@ def fetch(url, dest, log):
         if any(w in str(e).lower() for w in CERT_CLOCK_WORDS):
             raise RuntimeError("the PC's date/time is wrong - fix the clock, then try again")
     log("Downloading with Windows' own downloader instead (no progress shown) ...")
-    system_download(url, tmp, {"User-Agent": "%s/%s" % (APP_NAME, VERSION)})
+    system_download(url, tmp, {"User-Agent": "%s/%s" % (APP_ID, VERSION)})
     os.replace(tmp, dest)
 
 
@@ -3066,7 +3068,7 @@ def _github_asset(repo, pattern, deep=False):
 def install_aria2c(log):
     if not IS_WIN:  # aria2 publishes no official macOS/Linux binaries; the system package works fine
         raise RuntimeError("aria2c has no official download for %s. Install it with:  %s  "
-                           "- TasRip finds it automatically." % (OS_NAME, SYSTEM_INSTALL["aria2c"]))
+                           "- Royal Ripper finds it automatically." % (OS_NAME, SYSTEM_INSTALL["aria2c"]))
     log("Downloading aria2c ...")
     try:
         url = _github_asset("aria2/aria2", r"win-64bit.*\.zip$") or ARIA2_WIN_FALLBACK
@@ -3259,7 +3261,7 @@ def python_exe():
     return exe
 
 
-BUILD_ENV = os.path.join(tempfile.gettempdir(), "tasrip_buildenv")
+BUILD_ENV = os.path.join(tempfile.gettempdir(), "royalripper_buildenv")
 
 
 def _run_step(title, cmd, log, keep=("error", "warning: lib not found", "successfully")):
@@ -3310,9 +3312,9 @@ def _build_python(log):
 
 
 def build_exe(log):
-    """Build the standalone TasRip app (.exe / .app / binary) into the app folder, on this PC.
+    """Build the standalone Royal Ripper app (.exe / .app / binary) into the app folder, on this PC.
 
-    Nothing prebuilt is shipped: each user builds their own exe from tasrip.py.
+    Nothing prebuilt is shipped: each user builds their own exe from royalripper.py.
     """
     if sys.version_info < (3, 8):
         raise RuntimeError("Python 3.8 or newer is needed to build")
@@ -3322,16 +3324,16 @@ def build_exe(log):
     if check.returncode != 0:  # PyInstaller would quietly produce an exe that can't open a window
         raise RuntimeError("the build Python has no working Tkinter, so the app couldn't show its "
                            "window. " + TK_HINT)
-    work = tempfile.mkdtemp(prefix="tasrip_build_")
+    work = tempfile.mkdtemp(prefix="royalripper_build_")
     try:
         _run_step("Building the exe (a minute or two) ...",
                   [py, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile", "--windowed",
-                   "--log-level", "WARN", "--name", APP_NAME, "--distpath", os.path.join(work, "dist"),
+                   "--log-level", "WARN", "--name", APP_ID, "--distpath", os.path.join(work, "dist"),
                    "--workpath", os.path.join(work, "build"), "--specpath", work,
                    os.path.abspath(__file__)], log)
         dist = os.path.join(work, "dist")
-        app = os.path.join(dist, APP_NAME + ".app")
-        exe = app if IS_MAC and os.path.isdir(app) else os.path.join(dist, APP_NAME + EXE)
+        app = os.path.join(dist, APP_ID + ".app")
+        exe = app if IS_MAC and os.path.isdir(app) else os.path.join(dist, APP_ID + EXE)
         if not os.path.exists(exe):
             raise RuntimeError("PyInstaller finished but produced nothing")
         out = os.path.join(BASE_DIR, os.path.basename(exe))
@@ -3385,24 +3387,24 @@ def popen(args, stderr=subprocess.STDOUT):
 
 
 BUILDER = "build_exe.bat" if IS_WIN else "build.command" if IS_MAC else "build.sh"
-APP_FILE = APP_NAME + (".exe" if IS_WIN else ".app" if IS_MAC else "")
+APP_FILE = APP_ID + (".exe" if IS_WIN else ".app" if IS_MAC else "")
 TK_HINT = ("Reinstall Python from python.org with 'tcl/tk and IDLE' ticked." if IS_WIN else
            "Install Python from python.org (it includes Tk), or: brew install python-tk" if IS_MAC else
            "Install Tk for Python, e.g.  sudo apt install python3-tk")
 
 
 def stale_exe_note():
-    """If this is a built exe and the tasrip.py next to it is a newer version, say so."""
+    """If this is a built exe and the royalripper.py next to it is a newer version, say so."""
     if not getattr(sys, "frozen", False):
         return None
     try:
-        with open(os.path.join(BASE_DIR, "tasrip.py"), encoding="utf-8") as f:
+        with open(os.path.join(BASE_DIR, "royalripper.py"), encoding="utf-8") as f:
             m = re.search(r'^VERSION = "([\d.]+)"', f.read(), re.M)
     except OSError:
         return None
     ver = lambda v: tuple(int(x) for x in v.split("."))
     if m and ver(m.group(1)) > ver(VERSION):
-        return ("This %s is v%s, but the tasrip.py next to it is v%s. Run %s to rebuild it, "
+        return ("This %s is v%s, but the royalripper.py next to it is v%s. Run %s to rebuild it, "
                 "or you'll keep getting the old version." % (APP_FILE, VERSION, m.group(1), BUILDER))
     return None
 
@@ -4213,7 +4215,7 @@ class App:
             text = "\n".join("%s: %s | %s | %s | %s" % (c, r["signin"], r["episode"], r["quality"], r["result"])
                              for c, r in results.items())
             self.root.clipboard_clear()
-            self.root.clipboard_append("TasRip v%s channel test\n%s" % (VERSION, text))
+            self.root.clipboard_append("Royal Ripper v%s channel test\n%s" % (VERSION, text))
         b = ttk.Frame(win)
         b.pack(fill="x", padx=10, pady=(4, 10))
         ttk.Button(b, text="Run again", command=run).pack(side="left")
@@ -4257,8 +4259,8 @@ class App:
 
             def done():
                 self.log("Report saved: %s" % path)
-                messagebox.showinfo(APP_NAME, "Saved a report for this download in the TasRip folder:\n\n%s\n\n"
-                                              "It has everything TasRip logged for it. Send that file to whoever "
+                messagebox.showinfo(APP_NAME, "Saved a report for this download in the Royal Ripper folder:\n\n%s\n\n"
+                                              "It has everything Royal Ripper logged for it. Send that file to whoever "
                                               "is helping you (passwords and your user name are removed)."
                                     % os.path.basename(path))
                 show_in_folder(path)
@@ -4274,13 +4276,13 @@ class App:
         win.title("Antivirus helper")
         win.transient(self.root)
         win.resizable(False, False)
-        what = ", ".join(names) if names else "one of TasRip's tools"
+        what = ", ".join(names) if names else "one of Royal Ripper's tools"
         ttk.Label(win, wraplength=500, justify="left", text=(
             "It looks like your antivirus has blocked or removed %s.\n\n"
             "Antivirus programs often flag tools like yt-dlp, ffmpeg and the custom yt-dlp builds because "
-            "they're unsigned downloaders - it's a false alarm. TasRip will keep working with what's left "
+            "they're unsigned downloaders - it's a false alarm. Royal Ripper will keep working with what's left "
             "(it falls back to the normal yt-dlp), but for everything to work, let your antivirus trust "
-            "the TasRip folder:\n\n%s" % (what, BASE_DIR))).pack(anchor="w", padx=14, pady=(14, 6))
+            "the Royal Ripper folder:\n\n%s" % (what, BASE_DIR))).pack(anchor="w", padx=14, pady=(14, 6))
         if reason:
             ttk.Label(win, foreground="#888", wraplength=500, text="(Windows said: %s)" % reason[:160]).pack(anchor="w", padx=14)
         msg = tk.StringVar()
@@ -4314,7 +4316,7 @@ class App:
         ttk.Label(win, wraplength=500, justify="left", foreground="#888", text=(
             "Other antivirus (Avast, AVG, Norton, McAfee, Kaspersky, ESET, Bitdefender): open it, find "
             "'Exceptions' or 'Exclusions', add the folder above, then restore anything it quarantined from "
-            "the TasRip folder.")).pack(anchor="w", padx=14, pady=4)
+            "the Royal Ripper folder.")).pack(anchor="w", padx=14, pady=4)
         ttk.Label(win, textvariable=msg, foreground="#0a5", wraplength=500).pack(anchor="w", padx=14, pady=4)
 
         def close():
@@ -4373,8 +4375,8 @@ class App:
     def export_clicked(self):
         self.save_settings()
         save_queue(list(self.items.values()))
-        dest = filedialog.asksaveasfilename(title="Export my TasRip setup", defaultextension=".zip",
-                                            initialfile="TasRip-setup-%s.zip" % time.strftime("%Y%m%d"),
+        dest = filedialog.asksaveasfilename(title="Export my Royal Ripper setup", defaultextension=".zip",
+                                            initialfile="RoyalRipper-setup-%s.zip" % time.strftime("%Y%m%d"),
                                             filetypes=[("Zip file", "*.zip")])
         if not dest:
             return
@@ -4388,7 +4390,7 @@ class App:
                             % dest)
 
     def import_clicked(self):
-        src = filedialog.askopenfilename(title="Import a TasRip setup", filetypes=[("Zip file", "*.zip")])
+        src = filedialog.askopenfilename(title="Import a Royal Ripper setup", filetypes=[("Zip file", "*.zip")])
         if not src:
             return
         if not messagebox.askyesno(APP_NAME, "Replace this PC's settings, watch list, history and archive with the "
@@ -4399,7 +4401,7 @@ class App:
         except Exception as e:
             return messagebox.showerror(APP_NAME, "Couldn't import: %s" % e)
         self.log("Imported: %s" % ", ".join(done))
-        messagebox.showinfo(APP_NAME, "Imported %s.\n\nTasRip will close now - start it again to use them." % ", ".join(done))
+        messagebox.showinfo(APP_NAME, "Imported %s.\n\nRoyal Ripper will close now - start it again to use them." % ", ".join(done))
         self.running = False
         self.items = {}
         self.save_settings = lambda: None  # keep the imported settings.json
@@ -4459,10 +4461,10 @@ class App:
     # ---- 1.0.8: first-start progress window
     def _setup_window(self, labels):
         win = tk.Toplevel(self.root)
-        win.title("Setting up TasRip")
+        win.title("Setting up Royal Ripper")
         win.transient(self.root)
         win.resizable(False, False)
-        ttk.Label(win, wraplength=460, text="Downloading the tools TasRip uses - this happens once and takes a few "
+        ttk.Label(win, wraplength=460, text="Downloading the tools Royal Ripper uses - this happens once and takes a few "
                                             "minutes. You can keep using the window meanwhile.").pack(anchor="w", padx=14, pady=(14, 8))
         rows = {}
         grid = ttk.Frame(win)
@@ -4624,9 +4626,9 @@ class App:
         win.resizable(False, False)
         pad = {"padx": 12, "pady": 4}
         ttk.Label(win, wraplength=480, justify="left", text=(
-            "Paste a channel's live page or a stream address (.m3u8). TasRip finds the stream with yt-dlp, "
+            "Paste a channel's live page or a stream address (.m3u8). Royal Ripper finds the stream with yt-dlp, "
             "and falls back to Streamlink if yt-dlp can't. DRM-protected channels can't be recorded."
-            ).replace("TasRip", APP_NAME)).pack(anchor="w", padx=12, pady=(12, 6))
+            ).replace("Royal Ripper", APP_NAME)).pack(anchor="w", padx=12, pady=(12, 6))
         url = tk.StringVar()
         r = ttk.Frame(win); r.pack(fill="x", **pad)
         ttk.Label(r, text="Live page / stream").pack(side="left")
@@ -5158,7 +5160,7 @@ class App:
         win.transient(self.root)
         win.resizable(False, False)
         ttk.Label(win, wraplength=460, justify="left", text=(
-            "Some sites only let signed-in accounts download. For SBS, 9Now, 7plus and iView TasRip uses "
+            "Some sites only let signed-in accounts download. For SBS, 9Now, 7plus and iView Royal Ripper uses "
             "your sign-in from Firefox (it never sees that password). 10 needs your email and password "
             "instead.")).pack(anchor="w", padx=14, pady=(14, 8))
         names = [n for n, _, _ in SIGNIN_SITES]
@@ -5176,7 +5178,7 @@ class App:
         def open_site():
             ff = firefox_exe()
             if not ff:
-                result.set("Firefox isn't installed. It's the browser that works best with TasRip - "
+                result.set("Firefox isn't installed. It's the browser that works best with Royal Ripper - "
                            "press 'Get Firefox', install it, then come back here.")
                 return
             try:
@@ -5195,7 +5197,7 @@ class App:
 
                 def show():
                     msg = {
-                        "ready": "Signed in to %s - all set. TasRip will use it from now on." % name,
+                        "ready": "Signed in to %s - all set. Royal Ripper will use it from now on." % name,
                         "close_firefox": "Nearly there - your %s sign-in is in Firefox, but Firefox needs to be "
                                          "closed before it can be used. Close every Firefox window, then press "
                                          "Check again." % name,
@@ -5230,7 +5232,7 @@ class App:
         # 10: email + password (yt-dlp can't use a browser sign-in for 10)
         pwf = ttk.Frame(holder)
         ttk.Label(pwf, wraplength=440, justify="left", text=(
-            "10 doesn't work with a browser sign-in - TasRip needs your 10 email and password. "
+            "10 doesn't work with a browser sign-in - Royal Ripper needs your 10 email and password. "
             "They're sent only to 10.")).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
         known = saved_login("10.com.au") or self.site_logins.get("10.com.au") or ("", "")
         user, pw = tk.StringVar(value=known[0]), tk.StringVar(value=known[1])
@@ -5267,8 +5269,8 @@ class App:
                         else:
                             forget_login("10.com.au")
                         msg = ("Signed in to 10 - all set." if state == "ok" else
-                               "Couldn't reach 10 to check (%s), but TasRip will use these details." % state)
-                        msg += " Remembered on this PC." if saved else " Used until TasRip is closed."
+                               "Couldn't reach 10 to check (%s), but Royal Ripper will use these details." % state)
+                        msg += " Remembered on this PC." if saved else " Used until Royal Ripper is closed."
                         msg += " Retry any 10 downloads that failed."
                     try:
                         result.set(msg)
@@ -5316,7 +5318,7 @@ class App:
 
             def done():
                 self.log("Problem report saved: %s" % path)
-                messagebox.showinfo(APP_NAME, "Saved a problem report in the TasRip folder:\n\n%s\n\n"
+                messagebox.showinfo(APP_NAME, "Saved a problem report in the Royal Ripper folder:\n\n%s\n\n"
                                               "Send that file to whoever is helping you. Your passwords, "
                                               "email and Windows user name are not in it." % os.path.basename(path))
                 show_in_folder(path)
@@ -5400,13 +5402,13 @@ class App:
                 and not getattr(self, "geo_warned", False):
             self.geo_warned = True
             self.q.put(("log", "Note: the site thinks this connection is outside Australia. Some Australian "
-                               "connections get flagged this way (it's the site, not TasRip). If the show "
+                               "connections get flagged this way (it's the site, not Royal Ripper). If the show "
                                "plays in your browser on this PC, try again later; if it doesn't, the site is "
                                "blocking this connection - an Australian VPN server is the only known fix."))
         if text.startswith("[SBS] ") and not getattr(self, "sbs_warned", False):
             self.sbs_warned = True  # the old built-in SBS support, which SBS has shut off (HTTP 410)
             self.q.put(("log", "Note: the SBS fix plugin isn't loaded, so SBS will fail. Check that "
-                               "bin\\yt-dlp-plugins\\sbsfix2026 exists (re-extract the TasRip zip "
+                               "bin\\yt-dlp-plugins\\sbsfix2026 exists (re-extract the Royal Ripper zip "
                                "if not), or reinstall it from the Plugins tab."))
         self.q.put(("log", text))
 
@@ -6109,7 +6111,7 @@ class App:
             run_opts = dict(o, outdir=work)
         args = build_args(exe, item.get("feed") or item["url"], run_opts, login)
         self.log("\n> " + subprocess.list2cmdline(mask_args(args[:1] + args[8:])))
-        fd, saved_list = tempfile.mkstemp(prefix="tasrip_files_", suffix=".txt")
+        fd, saved_list = tempfile.mkstemp(prefix="royalripper_files_", suffix=".txt")
         os.close(fd)
         args = args[:-2] + ["--print-to-file", "after_move:" + SAVED_FIELDS, saved_list] + args[-2:]
         if o["thumb"] and not thumb_supported(o):
@@ -6525,7 +6527,7 @@ class App:
                                          "next start, or use the Tools menu." % ", ".join(still))
                             else:
                                 self.log("Setup didn't finish (missing: %s). Check the internet connection "
-                                         "and restart TasRip, or use the Tools menu." % ", ".join(still))
+                                         "and restart Royal Ripper, or use the Tools menu." % ", ".join(still))
                             self._summary()
         except queue.Empty:
             pass
@@ -6551,10 +6553,10 @@ class App:
         self._summary()
 
     def _write_log_file(self, logs):
-        """Keep a copy of the log on disk (logs/tasrip-YYYY-MM-DD.txt) for problem reports."""
+        """Keep a copy of the log on disk (logs/royalripper-YYYY-MM-DD.txt) for problem reports."""
         try:
             os.makedirs(LOG_DIR, exist_ok=True)
-            path = os.path.join(LOG_DIR, "tasrip-%s.txt" % time.strftime("%Y-%m-%d"))
+            path = os.path.join(LOG_DIR, "royalripper-%s.txt" % time.strftime("%Y-%m-%d"))
             with open(path, "a", encoding="utf-8") as f:
                 if not getattr(self, "log_started", False):
                     self.log_started = True

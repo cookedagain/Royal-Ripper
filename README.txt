@@ -1,9 +1,21 @@
-TasRip v1.0.8 - a Windows GUI for yt-dlp (successor to the Tas Rip Pack, formerly MediaRipper)
-=================================================================================================
+Royal Ripper v1.0.8 - a Windows GUI for yt-dlp (successor to the Tas Rip Pack, formerly TasRip and MediaRipper)
+===============================================================================================================
 
 NEW IN 1.0.8
+  - TasRip is now Royal Ripper. The files are renamed too: RoyalRipper.bat,
+    "Update RoyalRipper.bat", royalripper.py and RoyalRipper.exe. Coming from TasRip,
+    either way works:
+      Fresh install (cleanest): unzip Royal Ripper into a new folder next to your TasRip
+        folder and double-click RoyalRipper.bat. On the first start it copies your settings,
+        archive, watch list, history, queue, saved 10 sign-in, site engines and tools across
+        from the TasRip folder. Once you're happy, delete the TasRip folder.
+      Or just overwrite: close TasRip, unzip over your TasRip folder, then double-click
+        "Update RoyalRipper.bat" (not the old "Update TasRip.bat"). It removes TasRip.bat,
+        "Update TasRip.bat", tasrip.py and TasRip.exe, and rebuilds the exe as
+        RoyalRipper.exe if you used one.
+    Either way, point any shortcuts at RoyalRipper.bat instead of TasRip.bat.
   - At once (main options row): download 1, 2 or 3 episodes at the same time.
-  - The queue is remembered: close TasRip with downloads waiting or failed and they're back
+  - The queue is remembered: close Royal Ripper with downloads waiting or failed and they're back
     next time - press Start to carry on.
   - A failed row now says "double-click for a report". Double-click it (or right-click >
     Make a report for this item) for a small zip with everything logged for that one
@@ -12,11 +24,11 @@ NEW IN 1.0.8
     new version is tested before it replaces the old one; if it doesn't run, the old one is
     put back. Settings > Tools to turn it off; Tools > Update all the other tools now.
   - Antivirus helper (Tools menu, and pops up by itself when a tool vanishes or Windows says
-    a file "contains a virus"): one button asks Windows Defender to trust the TasRip folder,
+    a file "contains a virus"): one button asks Windows Defender to trust the Royal Ripper folder,
     another re-downloads what was removed. Notes for Avast/Norton/etc. too.
   - Mac leftovers (._ files, .DS_Store, __MACOSX) are cleaned out on every start, so a zip
     passed through a Mac can't break the engines again.
-  - Tools > Sign-in status: one line per channel showing whether TasRip can see your sign-in
+  - Tools > Sign-in status: one line per channel showing whether Royal Ripper can see your sign-in
     (and the 7plus login cookie). Double-click a channel to sign in.
   - First start shows a window with a progress bar for each tool being downloaded.
   - Subtitle check: after a download, the subtitles are checked against the episode length.
@@ -32,37 +44,37 @@ NEW IN 1.0.8
 
 FIRST RUN
   1. Unzip anywhere (a USB stick is fine).
-  2. Double-click TasRip.bat. That's it - it sets itself up:
+  2. Double-click RoyalRipper.bat. That's it - it sets itself up:
        - no usable Python on the PC? it downloads a portable one into bin\python
          (nothing is installed on the PC, so it travels with the folder)
-       - TasRip then downloads every tool it uses into bin: yt-dlp, ffmpeg, N_m3u8DL-RE,
+       - Royal Ripper then downloads every tool it uses into bin: yt-dlp, ffmpeg, N_m3u8DL-RE,
          aria2c and Streamlink, plus the Tas Rip Pack's other tools in the background:
          mkvmerge (MKVToolNix), SubtitleEdit (needs .NET Framework 4.8 - built into
          Windows 10/11), jq, wget and 7zr (7-Zip's unpacker, used for MKVToolNix)
      The first start takes a few minutes; later starts are instant.
   Everything comes from the official sources; nothing large is bundled.
 
-  Coming from MediaRipper? Unzip TasRip next to your old MediaRipper folder and its settings,
-  archive.txt, site engines and tools are copied across on the first start. Or unzip TasRip
-  over the old folder and run "Update TasRip.bat".
+  Coming from TasRip or MediaRipper? Unzip Royal Ripper next to your old TasRip or MediaRipper
+  folder and its settings, archive.txt, site engines and tools are copied across on the first
+  start. Or unzip Royal Ripper over the old folder and run "Update RoyalRipper.bat".
 
-  Want a single TasRip.exe? Run build_exe.bat once. TasRip.bat then opens the exe instead.
-  After an update, TasRip.bat notices the exe is older than tasrip.py and rebuilds it by
+  Want a single RoyalRipper.exe? Run build_exe.bat once. RoyalRipper.bat then opens the exe instead.
+  After an update, RoyalRipper.bat notices the exe is older than royalripper.py and rebuilds it by
   itself (once, a few minutes) - so nobody gets stuck on an old version.
 
-  Old Tas Rip Pack scripts: TasRip.bat makes an "Extractors" folder that points at bin, and
+  Old Tas Rip Pack scripts: RoyalRipper.bat makes an "Extractors" folder that points at bin, and
   the tools sit where the scripts expect them (yt-dlp.exe, jq.exe, aria2c.exe, ffmpeg.exe,
   mkvmerge.exe, N_m3u8DL-RE.exe, wget.exe, SubEdit\SubtitleEdit.exe). Drop the old .bat files
-  into the TasRip folder and they run as before - including the iView and 10 bats that use
+  into the Royal Ripper folder and they run as before - including the iView and 10 bats that use
   yt-dlp-iView-beta.exe and yt-dlp-modified.exe.
 
 UPDATING TO A NEW VERSION
-  1. Close TasRip.
-  2. Unzip the new version over your TasRip folder (say Yes to replacing files).
-  3. Double-click "Update TasRip.bat". It keeps your settings, archive, watch list, history
+  1. Close Royal Ripper.
+  2. Unzip the new version over your Royal Ripper folder (say Yes to replacing files).
+  3. Double-click "Update RoyalRipper.bat". It keeps your settings, archive, watch list, history
      and site engines, tidies away old files, gets any missing tools, updates yt-dlp,
-     rebuilds TasRip.exe if you use one, then starts TasRip.
-  "Update TasRip.bat full" also re-downloads ffmpeg, N_m3u8DL-RE, aria2c and Streamlink.
+     rebuilds RoyalRipper.exe if you use one, then starts Royal Ripper.
+  "Update RoyalRipper.bat full" also re-downloads ffmpeg, N_m3u8DL-RE, aria2c and Streamlink.
 
 SEARCH SHOWS (top of the Downloads tab)
   Type a show name, pick "All 5 channels" or one channel, press Search. The results window
@@ -90,7 +102,7 @@ THE OPTIONS (main screen, as in 0.7.5)
   .nfo                 Scene (text): a scene-style info file - release name, show/episode,
                        air date, video/audio/subtitle details, size, runtime, plot.
                        Only written for untouched downloads (WEB-DL): files you have
-                       TasRip re-encode don't get one.
+                       Royal Ripper re-encode don't get one.
                        Kodi / Jellyfin (XML): the metadata file media centres read.
                        Off: none.
   Skip already downloaded   remembers finished items in archive.txt
@@ -111,8 +123,8 @@ SIGNING IN (SBS and 10 need it)
           it once (the password is encrypted so only your Windows account can read it, and it's
           never put in problem reports). "Forget" removes it.
   Others: follow the three steps (open the site in Firefox, sign in and close Firefox, Check
-          my sign-in). TasRip only reads Firefox's sign-in; it never sees that password.
-          Once Firefox is signed in to 7plus, SBS, 9Now or iView, TasRip uses that sign-in for
+          my sign-in). Royal Ripper only reads Firefox's sign-in; it never sees that password.
+          Once Firefox is signed in to 7plus, SBS, 9Now or iView, Royal Ripper uses that sign-in for
           those sites automatically (unless you picked another browser under Browser cookies).
           7plus only gives 720p to signed-in accounts (otherwise 504p/540p). It needs 7plus's
           own login cookie in Firefox - "Check my sign-in" checks for exactly that one. If it
@@ -124,7 +136,7 @@ SERVICES
   ABC Kids / ABC Entertains etc.     any show page works; for a channel page use Pick episodes
   Tubi                               movies and whole series
   ABC Listen, SBS Audio, podcasts    saved as audio from the show's podcast feed - paste the
-                                     program page; TasRip finds the feed by itself
+                                     program page; Royal Ripper finds the feed by itself
   Pluto TV                           yt-dlp's Pluto support is currently broken (and Pluto now
                                      wants an account) - if a Pluto plugin appears, install it
                                      from the Plugins tab
@@ -145,11 +157,11 @@ AUSTRALIAN SITES ("AU site recipes", on by default)
 
 RECORD LIVE TV (Record live ... button, or Tools)
   Paste a channel's live page or a stream address (.m3u8), how many minutes, and start now or
-  at a set time. TasRip finds the stream with yt-dlp, and falls back to Streamlink if yt-dlp
-  can't. Saved in the Live folder. Keep TasRip open until it's done. Right-click to stop.
+  at a set time. Royal Ripper finds the stream with yt-dlp, and falls back to Streamlink if yt-dlp
+  can't. Saved in the Live folder. Keep Royal Ripper open until it's done. Right-click to stop.
 
 WATCH LIST (tab)
-  Add a show, season, channel or podcast. TasRip checks it once a day (or press Check all
+  Add a show, season, channel or podcast. Royal Ripper checks it once a day (or press Check all
   now) and downloads only episodes that aren't in archive.txt. "Only titles containing"
   narrows it down. Tick "Skip the episodes already out" to only get new ones from now on.
 
@@ -178,7 +190,7 @@ SITE ENGINES (the pack's custom yt-dlp builds) - included
     yt-dlp-modified.exe    -> 10         (the pack's 10 build; signs in with your 10 email +
                                           password like the 10playV4 bat)
   If an engine won't start (blocked or damaged by antivirus, or a "._" file left by a Mac),
-  TasRip says so in the log and uses the normal yt-dlp for that download instead.
+  Royal Ripper says so in the log and uses the normal yt-dlp for that download instead.
   Everything else uses the normal, always-updated yt-dlp. Settings > Tools & engines >
   Site engines shows and changes this (pick "standard yt-dlp" to stop using one). You can drop
   other builds into bin\engines too - only add ones you trust. Engines don't load plugins.
@@ -194,13 +206,13 @@ TEST CHANNELS (button bottom right, or Tools > Test all channels)
   on the clipboard to paste to whoever is helping you.
 
 PROBLEMS
-  - Press "Report a problem" (bottom right). It saves a zip in the TasRip folder with your
+  - Press "Report a problem" (bottom right). It saves a zip in the Royal Ripper folder with your
     settings, tool versions and recent logs - email, passwords, tokens and your Windows user
     name are removed. Send that file to whoever is helping you.
   - "SSL: CERTIFICATE_VERIFY_FAILED": usually antivirus HTTPS scanning or a filtered network.
-    TasRip switches to Windows' own certificate checks by itself and retries. If it says
+    Royal Ripper switches to Windows' own certificate checks by itself and retries. If it says
     "expired" or "not yet valid", fix the PC's clock.
-  - Downloads suddenly failing: Tools > Update yt-dlp now (TasRip uses yt-dlp's nightly
+  - Downloads suddenly failing: Tools > Update yt-dlp now (Royal Ripper uses yt-dlp's nightly
     builds by default, which get site fixes first).
   - 10 "Not available from your location": if it won't play in the browser either, an
     Australian VPN server is the only known fix.

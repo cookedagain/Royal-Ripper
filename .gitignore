@@ -8,6 +8,8 @@ archive.txt*
 engines.json*
 *.bak
 *.log
+RoyalRipper-problem-report-*.zip
+RoyalRipper-setup-*.zip
 TasRip-problem-report-*.zip
 TasRip-setup-*.zip
 
@@ -20,6 +22,7 @@ bin/.old/
 build/
 dist/
 *.spec
+RoyalRipper.exe
 TasRip.exe
 __pycache__/
 
