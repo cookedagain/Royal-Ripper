@@ -1777,8 +1777,8 @@ def install_subtitleedit(log):
 EXTRA_TOOLS = (("mkvmerge", "mkvmerge", "install_mkvmerge"), ("SubtitleEdit", "SubtitleEdit", "install_subtitleedit"),
                ("7zr", "7zr", "install_7zr"))
 # 1.1.0: wget and jq are no longer downloaded - nothing in Royal Ripper uses them (they were only for old
-# Tas Rip Pack bats), and wget's download site was flagged by Malwarebytes. A wget.exe / jq.exe already in
-# bin or on the PATH is left alone and old bats still find it.
+# Tas Rip Pack bats), and wget's download site was flagged by Malwarebytes. Copies older versions left in
+# bin are deleted (RETIRED_TOOLS); one on the PATH is still found by old bats.
 EXTRA_RETRY_FILE = os.path.join(BIN_DIR, ".extras-tried")
 
 
@@ -1927,9 +1927,7 @@ TOOL_FILES = {
     "N_m3u8DL-RE": (("N_m3u8DL-RE" + EXE,), "install_nm3u8", 7),
     "aria2c": (("aria2c" + EXE,), "install_aria2c", 7),
     "streamlink": (("streamlink",), "install_streamlink", 7),
-    # mkvextract/mkvinfo/mkvpropedit aren't installed any more (1.1.0); still listed so the next mkvmerge
-    # update removes the copies older versions left in bin
-    "mkvmerge": (("mkvmerge.exe", "mkvextract.exe", "mkvinfo.exe", "mkvpropedit.exe"), "install_mkvmerge", 7),
+    "mkvmerge": (("mkvmerge.exe",), "install_mkvmerge", 7),
     "SubtitleEdit": (("SubEdit",), "install_subtitleedit", 7),
 }
 
@@ -2066,9 +2064,29 @@ def update_all_tools(log, busy=lambda: False, force=False):
 SEEN_TOOLS_FILE = os.path.join(BIN_DIR, ".tools-seen.json")
 
 
+# Tools older versions put in bin that Royal Ripper no longer uses: removed on start and by the updater.
+RETIRED_TOOLS = ("wget.exe", "jq.exe", "mkvextract.exe", "mkvinfo.exe", "mkvpropedit.exe")
+
+
+def remove_retired_tools(log=lambda t: None):
+    gone = []
+    for f in RETIRED_TOOLS:
+        path = os.path.join(BIN_DIR, f)
+        try:
+            if os.path.isfile(path):
+                os.remove(path)
+                gone.append(f)
+        except OSError:
+            pass  # in use or blocked - try again next start
+    if gone:
+        log("Removed tools Royal Ripper no longer uses: %s" % ", ".join(gone))
+    return gone
+
+
 def vanished_tools():
     """Tools that were here before but have gone (usually an antivirus quarantining them)."""
-    seen = _load_json(SEEN_TOOLS_FILE, [])
+    known = {n for _, n, _ in SETUP_TOOLS + EXTRA_TOOLS}
+    seen = [t for t in _load_json(SEEN_TOOLS_FILE, []) if t in known]  # retired tools aren't "missing"
     gone = [t for t in seen if not tool_path(t)]
     now = sorted(set([t for t in seen if tool_path(t)] +
                      [n for _, n, _ in SETUP_TOOLS + EXTRA_TOOLS if tool_path(n)]))
@@ -2744,6 +2762,7 @@ def headless_update(full=False, log=print):
     """Update.bat: fetch missing tools, update yt-dlp, and (full) reinstall every helper tool."""
     global USE_NIGHTLY, USE_SYSTEM_CERTS
     os.makedirs(BIN_DIR, exist_ok=True)
+    remove_retired_tools(log)
     migrate_old_install(log)
     s = load_settings()
     USE_NIGHTLY, USE_SYSTEM_CERTS = bool(s.get("nightly")), bool(s.get("syscerts"))
@@ -6796,6 +6815,7 @@ def main():
         clean_mac_junk(BASE_DIR)
     except Exception:
         pass
+    remove_retired_tools()
     if IS_WIN:
         try:  # crisp text on high-DPI screens
             import ctypes

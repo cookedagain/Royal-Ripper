@@ -39,9 +39,9 @@ The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria
 - **Less to download, less on disk:** tools Royal Ripper never actually used are gone.
   - **wget** - only there for old Tas Rip Pack .bat scripts, and the site it came from (eternallybored.org) was being flagged by Malwarebytes.
   - **jq** - also only for old Tas Rip Pack .bat scripts.
-  - **mkvextract, mkvinfo and mkvpropedit** - came along with mkvmerge but were never used. Copies from older versions are cleared out the next time mkvmerge updates itself.
+  - **mkvextract, mkvinfo and mkvpropedit** - came along with mkvmerge but were never used.
 
-  A wget.exe or jq.exe you already have in `bin` stays and old bats still find it. If an old bat needs one and you don't have it, put it in the `bin` folder yourself.
+  Copies of these left in `bin` by older versions are deleted automatically when you update. If you still run an old Tas Rip Pack .bat that needs wget or jq, put `wget.exe` / `jq.exe` somewhere on your PATH instead.
 
 ## New in 1.0.8
 
