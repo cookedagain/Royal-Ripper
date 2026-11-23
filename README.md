@@ -13,6 +13,7 @@ The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria
 **Coming from TasRip?** This is the same app, renamed. See [New in 1.0.8](#new-in-108) below.
 
 **Contents:**
+[New in 1.0.9](#new-in-109) ·
 [New in 1.0.8](#new-in-108) ·
 [First run](#first-run) ·
 [Updating](#updating-to-a-new-version) ·
@@ -31,6 +32,16 @@ The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria
 [Plugins](#plugins-tab) ·
 [Test channels](#test-channels) ·
 [Problems](#problems)
+
+## New in 1.0.9
+
+- **HandBrake encoding (nightly builds).** Settings > Encoding > Encoder: pick **HandBrake** instead of ffmpeg. Royal Ripper downloads HandBrakeCLI from HandBrake's official nightly builds the first time (into `bin\HandBrakeCLI`) and checks for a newer nightly every day.
+  - **Use the settings above:** Format / Quality / Speed / Resize / Audio / graphics card work as before, with HandBrake's encoders - SVT-AV1 on the CPU, or NVENC / AMD VCE / Intel QSV on the graphics card (if the card can't, it falls back to the CPU).
+  - **Or use a HandBrake preset:** pick one of HandBrake's own presets, or press **Load presets file ...** and choose presets you exported from HandBrake (Presets > Export), then pick yours from the list. The preset decides the video and audio settings.
+  - **10-bit for H.265 and AV1** (on by default): less banding and usually smaller files.
+  - Subtitles are copied back in from the original exactly as they were - HandBrake would otherwise convert them and drop the forced flag. Track names, languages and chapters are kept too.
+  - The container stays what you chose on the main screen (MKV or MP4). Other containers, and "Upscale to 1080p", use ffmpeg.
+- **RF / CQ and Encoder preset boxes** (Settings > Encoding, both encoders): type an exact quality value (e.g. 30 for SVT-AV1) or encoder preset (e.g. 4 for SVT-AV1, slow for x265) instead of the Quality / Speed choices. Leave them blank to use the choices.
 
 ## New in 1.0.8
 
@@ -259,7 +270,10 @@ Click "Dark mode" on the menu bar (or Settings > General). It's remembered.
   speed, resize, audio. "Upscale to 1080p" turns 720p into 1080p (Lanczos +
   light sharpening) - cleaner on a big TV, but it can't add real detail and
   files get bigger. CPU unless you tick "Use the graphics card"; "Check my
-  hardware and recommend" tests this PC and suggests the best option
+  hardware and recommend" tests this PC and suggests the best option.
+  RF / CQ and Encoder preset take exact values. Encoder: ffmpeg or HandBrake (nightly) - with
+  HandBrake you can also pick a HandBrake preset or load your own exported presets file, and
+  choose 10-bit for H.265 / AV1 (see New in 1.0.9)
 - **Tools & engines** - yt-dlp Nightly (the default - newest site fixes) / Stable, daily update on/off, each tool's version with
   Reinstall, site engines, AU recipe on/off per site
 
