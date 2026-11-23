@@ -41,7 +41,7 @@ except ImportError:  # lets the core logic be imported/tested without a display
 
 APP_NAME = "Royal Ripper"
 APP_ID = "RoyalRipper"  # the name without a space: exe/app file, scene tag, User-Agent
-VERSION = "1.0.8"
+VERSION = "1.0.9"
 IS_WIN = os.name == "nt"
 IS_MAC = sys.platform == "darwin"
 OS_NAME = "Windows" if IS_WIN else "macOS" if IS_MAC else "Linux"
@@ -150,7 +150,7 @@ DEFAULTS = {
     "encode": False, "enc_codec": "H.264", "enc_quality": "Balanced", "enc_speed": "Fast",
     "enc_resize": "Keep", "enc_audio": "Copy", "enc_gpu": False, "enc_vendor": "",
     "dark": False, "notify": True, "sound": True, "min_free_gb": "5", "watch_daily": True,
-    "nfo": "Scene (text)", "thumbfile": True, "search_in": "All 5 channels", "cfg_ver": "2",
+    "nfo": "Off", "thumbfile": True, "search_in": "All 5 channels", "cfg_ver": "2",
     "use_mkvmerge": True, "min_quality": "720p", "parallel": "1", "tools_autoupdate": True,
     "sched_on": False, "sched_rate": "2M", "sched_from": "07:00", "sched_to": "23:00",
     "app_updates": True, "skip_version": "",

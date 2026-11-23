@@ -13,6 +13,7 @@ The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria
 **Coming from TasRip?** This is the same app, renamed. See [New in 1.0.8](#new-in-108) below.
 
 **Contents:**
+[New in 1.0.9](#new-in-109) ·
 [New in 1.0.8](#new-in-108) ·
 [First run](#first-run) ·
 [Updating](#updating-to-a-new-version) ·
@@ -31,6 +32,10 @@ The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria
 [Plugins](#plugins-tab) ·
 [Test channels](#test-channels) ·
 [Problems](#problems)
+
+## New in 1.0.9
+
+- **.nfo files are now off by default** for new installs. If you already use them, nothing changes - your setting is kept. To turn them on, pick *Scene (text)* or *Kodi / Jellyfin (XML)* next to **.nfo** on the main screen.
 
 ## New in 1.0.8
 
@@ -159,7 +164,7 @@ this instead of Add to queue: tick just the episodes (or shows) you want.
 - **Subtitles** - embedded, plus .srt files
 - **Embed metadata / thumbnail, Whole playlist**
 - **Save thumbnail (.jpg)** - the episode picture saved next to the video (Plex/Jellyfin/Kodi use it)
-- **.nfo**
+- **.nfo** (Off by default)
   - *Scene (text):* a scene-style info file - release name, show/episode,
     air date, video/audio/subtitle details, size, runtime, plot.
     Only written for untouched downloads (WEB-DL): files you have
