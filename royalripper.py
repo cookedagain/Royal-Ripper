@@ -41,7 +41,7 @@ except ImportError:  # lets the core logic be imported/tested without a display
 
 APP_NAME = "Royal Ripper"
 APP_ID = "RoyalRipper"  # the name without a space: exe/app file, scene tag, User-Agent
-VERSION = "1.0.9"
+VERSION = "1.0.8"
 IS_WIN = os.name == "nt"
 IS_MAC = sys.platform == "darwin"
 OS_NAME = "Windows" if IS_WIN else "macOS" if IS_MAC else "Linux"
@@ -116,7 +116,6 @@ NM3U8_ASSET = ("win-arm64" if ARM else "win-x64") if IS_WIN else \
 SYSTEM_INSTALL = {
     "aria2c": "brew install aria2" if IS_MAC else "sudo apt install aria2  (or your distro's package manager)",
     "ffmpeg": "brew install ffmpeg" if IS_MAC else "sudo apt install ffmpeg",
-    "HandBrakeCLI": "brew install handbrake" if IS_MAC else "sudo apt install handbrake-cli  (or the Flatpak)",
 }
 
 PROG_TAG = "MRPROG"
@@ -155,7 +154,6 @@ DEFAULTS = {
     "use_mkvmerge": True, "min_quality": "720p", "parallel": "1", "tools_autoupdate": True,
     "sched_on": False, "sched_rate": "2M", "sched_from": "07:00", "sched_to": "23:00",
     "app_updates": True, "skip_version": "",
-    "enc_engine": "ffmpeg", "enc_rf": "", "enc_preset": "", "enc_10bit": True, "hb_preset": "", "hb_preset_file": "",
 }
 HISTORY_FILE = os.path.join(BASE_DIR, "history.jsonl")
 WATCH_FILE = os.path.join(BASE_DIR, "watchlist.json")
@@ -167,13 +165,9 @@ AUTO_UPDATE_EVERY = 24 * 3600
 
 # ----------------------------------------------------------------- core logic
 
-def tool_path(name, local_only=False):
+def tool_path(name):
     """Prefer the copy in bin/, fall back to the system PATH (brew/apt installs). None if missing."""
     local = os.path.join(BIN_DIR, name + EXE)
-    if name == "HandBrakeCLI":  # 1.0.9: bin\HandBrakeCLI\HandBrakeCLI.exe (nightly build)
-        found = [f for f in glob.glob(os.path.join(BIN_DIR, "HandBrakeCLI", "**", "HandBrakeCLI" + EXE), recursive=True)
-                 if not os.path.basename(f).startswith(".")]
-        return found[0] if found else (None if local_only else shutil.which("HandBrakeCLI"))
     if name == "SubtitleEdit":  # bin\SubEdit, the same place the Tas Rip Pack kept it
         found = glob.glob(os.path.join(BIN_DIR, "SubEdit", "SubtitleEdit" + EXE)) + \
             glob.glob(os.path.join(BIN_DIR, "SubEdit", "**", "SubtitleEdit" + EXE), recursive=True)
@@ -966,7 +960,7 @@ def make_problem_report(queue_lines=(), item=None):
             "Python: %s%s" % (platform.python_version(), " (built exe)" if getattr(sys, "frozen", False) else ""),
             "Folder: %s" % scrub(BASE_DIR), "", "Tools:"]
     for name in ("yt-dlp", "ffmpeg", "N_m3u8DL-RE", "aria2c", "streamlink", "mkvmerge", "SubtitleEdit",
-                 "jq", "wget", "7zr", "HandBrakeCLI"):
+                 "jq", "wget", "7zr"):
         info.append("  %-12s %s" % (name, tool_version(name)))
     settings = load_settings()
     settings["outdir"] = scrub(settings["outdir"])
@@ -1038,21 +1032,7 @@ def encoder_name(o, force_cpu=False):
 
 def video_encode_args(enc, o):
     q = QUALITY_VALUES[enc][_pick(ENC_QUALITY, o.get("enc_quality"), 1)]
-    try:  # 1.0.9: a typed-in RF / CQ value wins over the Quality choice
-        custom = str(o.get("enc_rf") or "").strip()
-        q = str(float(custom)).rstrip("0").rstrip(".") if custom else q
-    except ValueError:
-        pass
     sp = _pick(ENC_SPEED, o.get("enc_speed"))
-    args = _ffmpeg_video_args(enc, q, sp)
-    pre = str(o.get("enc_preset") or "").strip()
-    flag = "-quality" if enc.endswith("_amf") else "-preset"
-    if pre and flag in args:  # 1.0.9: a typed-in encoder preset wins over the Speed choice
-        args[args.index(flag) + 1] = pre
-    return args
-
-
-def _ffmpeg_video_args(enc, q, sp):
     if enc in ("libx264", "libx265"):
         a = ["-c:v", enc, "-crf", str(q), "-preset", ("veryfast", "medium", "slow")[sp]]
         return a + (["-x265-params", "log-level=error"] if enc == "libx265" else [])
@@ -1095,13 +1075,6 @@ def media_duration(path):
 def encode_file(path, o, on_pct, set_proc, log, stopped=lambda: False):
     """Re-encode a downloaded video in place (the original is only replaced once the new file is
     complete). Falls back to the CPU if the graphics card refuses. Returns the encoder used."""
-    if o.get("enc_engine") == "HandBrake":
-        why = ("HandBrake only writes MKV and MP4" if os.path.splitext(path)[1].lower() not in HB_FORMATS else
-               "'Upscale to 1080p' is done with ffmpeg" if o.get("enc_resize") == "Upscale to 1080p" and
-               not hb_preset_chosen(o) else "")
-        if not why:
-            return encode_file_hb(path, o, on_pct, set_proc, log, stopped)
-        log("Using ffmpeg for this one: %s." % why)
     ffmpeg = tool_path("ffmpeg")
     if not ffmpeg:
         raise RuntimeError("ffmpeg is needed for re-encoding")
@@ -1146,305 +1119,6 @@ def encode_file(path, o, on_pct, set_proc, log, stopped=lambda: False):
         raise RuntimeError("encoding failed: %s" % (tail[-1] if tail else "ffmpeg exit code %s" % code))
     os.replace(tmp, path)
     return enc
-
-
-# ------------------------------------------------------------ 1.0.9: HandBrake (nightly) as a second encoder
-# HandBrakeCLI encodes the video and audio; the original subtitle tracks are then copied back in with
-# ffmpeg, because HandBrake converts SRT to SSA and drops the "forced" flag the AU recipes set.
-ENC_ENGINES = ["ffmpeg", "HandBrake"]
-HB_NONE = "(none - use the settings above)"
-HB_ENCODERS = {"CPU": ("x264", "x265", "svt_av1"),
-               "NVIDIA": ("nvenc_h264", "nvenc_h265", "nvenc_av1"),
-               "AMD": ("vce_h264", "vce_h265", "vce_av1"),
-               "Intel": ("qsv_h264", "qsv_h265", "qsv_av1")}
-HB_CPU = set(HB_ENCODERS["CPU"])
-HB_AS_FFMPEG = {hb: ff for v in HB_ENCODERS for hb, ff in zip(HB_ENCODERS[v], ENCODERS[v])}  # for QUALITY_VALUES
-HB_FORMATS = {".mkv": "av_mkv", ".mp4": "av_mp4", ".m4v": "av_mp4"}
-HB_COPY_MASK = "aac,ac3,eac3,truehd,dts,dtshd,mp3,flac,opus"
-HB_SNAPSHOTS = "HandBrake/handbrake-snapshots"  # the official nightly builds
-_HB_CACHE = {}
-
-
-def install_handbrake(log):
-    """HandBrakeCLI from HandBrake's official nightly builds, into bin\\HandBrakeCLI."""
-    if not IS_WIN:
-        raise RuntimeError("HandBrakeCLI is only fetched automatically on Windows. Install it with:  %s  "
-                           "- Royal Ripper finds it automatically." % SYSTEM_INSTALL["HandBrakeCLI"])
-    log("Downloading HandBrakeCLI (nightly build) ...")
-    url = _hb_asset()
-    if not url:
-        raise RuntimeError("couldn't find HandBrakeCLI in HandBrake's nightly builds")
-    dest = os.path.join(BIN_DIR, "HandBrakeCLI")
-    tmp = os.path.join(BIN_DIR, "_handbrake.zip")
-    try:
-        fetch(url.split("|")[0], tmp, log)
-        shutil.rmtree(dest, ignore_errors=True)
-        with zipfile.ZipFile(tmp) as z:
-            for n in z.namelist():
-                rel = os.path.normpath(n)
-                if rel.startswith("..") or os.path.isabs(rel) or ":" in rel:
-                    raise RuntimeError("unsafe path in the HandBrake zip: %s" % n)
-            z.extractall(dest)
-        exe = tool_path("HandBrakeCLI")
-        if exe and os.path.dirname(exe) != dest:  # lift it up if the zip had a top folder
-            inner = os.path.dirname(exe)
-            for f in os.listdir(inner):
-                shutil.move(os.path.join(inner, f), os.path.join(dest, f))
-            shutil.rmtree(inner, ignore_errors=True)
-    finally:
-        if os.path.exists(tmp):
-            os.remove(tmp)
-    if not tool_path("HandBrakeCLI", local_only=True):
-        shutil.rmtree(dest, ignore_errors=True)
-        raise RuntimeError("HandBrakeCLI.exe wasn't in the download")
-    _HB_CACHE.clear()
-    log("HandBrakeCLI (nightly) installed to bin\\HandBrakeCLI")
-
-
-def _hb_asset():
-    """'url|updated' of tonight's HandBrakeCLI zip for this PC (changes with every nightly)."""
-    rel = gh_json(GITHUB_API + "/repos/" + HB_SNAPSHOTS + "/releases/tags/win")
-    want = r"^HandBrakeCLI-.*-win-%s\.zip$" % ("aarch64" if ARM else "x86_64")
-    for a in rel.get("assets", []):
-        if re.search(want, a.get("name", ""), re.I):
-            return "%s|%s" % (a["browser_download_url"], a.get("updated_at", ""))
-    return None
-
-
-def _hb_run(hb, args, timeout=60):
-    try:
-        r = subprocess.run([hb] + args, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                           timeout=timeout, creationflags=NO_WINDOW, stdin=subprocess.DEVNULL)
-        return (r.stdout or "") + "\n" + (r.stderr or "")
-    except (OSError, subprocess.SubprocessError):
-        return ""
-
-
-def hb_encoders(hb):
-    """Video encoders this HandBrakeCLI build has (from its --help)."""
-    key = ("enc", hb)
-    if key not in _HB_CACHE:
-        text = _hb_run(hb, ["--help"])
-        block = text.split("--encoder <string>", 1)[1] if "--encoder <string>" in text else ""
-        names = []
-        for line in block.splitlines()[1:]:
-            if line.startswith(" " * 25) and re.match(r"^\s+[\w-]+\s*$", line):
-                names.append(line.strip())
-            elif names:
-                break
-        _HB_CACHE[key] = set(names)
-    return _HB_CACHE[key]
-
-
-def hb_encoder_presets(hb, enc):
-    """--encoder-preset values for an encoder, fastest first as HandBrake lists them."""
-    key = ("preset", hb, enc)
-    if key not in _HB_CACHE:
-        text = _hb_run(hb, ["--encoder-preset-list", enc])
-        vals = []
-        if "--encoder-preset values" in text:
-            for line in text.split("--encoder-preset values", 1)[1].splitlines()[1:]:
-                if re.match(r"^\s{2,}[\w.-]+\s*$", line):
-                    vals.append(line.strip())
-                elif vals:
-                    break
-        _HB_CACHE[key] = vals
-    return _HB_CACHE[key]
-
-
-def hb_presets(hb, preset_file=""):
-    """Names of HandBrake's built-in presets, then any in the user's exported preset file."""
-    names = []
-    if hb:
-        key = ("presets", hb)
-        if key not in _HB_CACHE:
-            found = []
-            for line in _hb_run(hb, ["--preset-list"]).splitlines():
-                if re.match(r"^ {4}\S", line):  # categories end in '/', descriptions are indented further
-                    found.append(line.strip())
-            _HB_CACHE[key] = found
-        names += _HB_CACHE[key]
-    if preset_file:
-        try:
-            with open(preset_file, encoding="utf-8") as f:
-                data = json.load(f)
-
-            def walk(items):
-                for p in items or []:
-                    if isinstance(p, dict):
-                        if p.get("Folder") or p.get("ChildrenArray"):
-                            walk(p.get("ChildrenArray"))
-                        elif p.get("PresetName"):
-                            names.insert(0, p["PresetName"])
-            walk(data.get("PresetList") if isinstance(data, dict) else data)
-        except (OSError, ValueError, AttributeError):
-            pass
-    return names
-
-
-def hb_preset_chosen(o):
-    p = (o.get("hb_preset") or "").strip()
-    return "" if not p or p.startswith("(") else p
-
-
-def hb_encoder_name(o, have=None, force_cpu=False):
-    """The HandBrake encoder for these settings - 10-bit where asked and this build has it."""
-    vendor = o.get("enc_vendor") if (o.get("enc_gpu") and not force_cpu) else "CPU"
-    idx = _pick(ENC_CODECS, o.get("enc_codec"))
-    enc = HB_ENCODERS.get(vendor, HB_ENCODERS["CPU"])[idx]
-    if have is not None and enc not in have:
-        enc = HB_ENCODERS["CPU"][idx]
-    if o.get("enc_10bit") and idx > 0 and (have is None or enc + "_10bit" in have):
-        enc += "_10bit"  # H.265 / AV1 only: 10-bit H.264 plays on hardly anything
-    return enc
-
-
-def _custom(o, key):
-    return str(o.get(key) or "").strip()
-
-
-def hb_video_args(hb, enc, o):
-    base = enc.replace("_10bit", "")
-    q = _custom(o, "enc_rf")
-    try:
-        q = str(float(q)).rstrip("0").rstrip(".") if q else str(QUALITY_VALUES[HB_AS_FFMPEG[base]][_pick(ENC_QUALITY, o.get("enc_quality"), 1)])
-    except ValueError:
-        q = str(QUALITY_VALUES[HB_AS_FFMPEG[base]][_pick(ENC_QUALITY, o.get("enc_quality"), 1)])
-    sp = _pick(ENC_SPEED, o.get("enc_speed"))
-    preset = _custom(o, "enc_preset")
-    if not preset:
-        if base == "svt_av1":
-            preset = ("10", "8", "6")[sp]
-        elif base in ("x264", "x265"):
-            preset = ("veryfast", "medium", "slow")[sp]
-        else:  # graphics cards: pick from what this build offers, fastest first
-            vals = hb_encoder_presets(hb, enc)
-            if vals:
-                n = len(vals)
-                pos = [0, 1, n - 1] if n <= 3 else [round((n - 1) / 3), (n - 1) // 2, round((n - 1) * 2 / 3)]
-                preset = vals[min(pos[sp], n - 1)]
-    return ["-e", enc, "-q", q] + (["--encoder-preset", preset] if preset else [])
-
-
-def hb_audio_args(o):
-    a = o.get("enc_audio")
-    if a == "AAC 192k":
-        return ["--all-audio", "-E", "av_aac", "-B", "192"]
-    if a == "AAC 128k":
-        return ["--all-audio", "-E", "av_aac", "-B", "128"]
-    if a == "Opus 128k":
-        return ["--all-audio", "-E", "opus", "-B", "128"]
-    return ["--all-audio", "-E", "copy", "--audio-copy-mask", HB_COPY_MASK, "--audio-fallback", "av_aac"]
-
-
-def hb_resize_args(o):
-    h = {"1080p": 1080, "720p": 720, "576p": 576}.get(o.get("enc_resize"))
-    # --crop 0:0:0:0: keep the whole picture (HandBrake crops black bars by itself otherwise).
-    # A height limit needs --non-anamorphic, or HandBrake squashes the width with a pixel aspect ratio.
-    return ["--crop", "0:0:0:0"] + (["--non-anamorphic", "-Y", str(h)] if h else [])
-
-
-def _stream_count(path, kind):
-    probe = tool_path("ffprobe")
-    if not probe:
-        return -1
-    try:
-        out = subprocess.run([probe, "-v", "error", "-select_streams", kind, "-show_entries", "stream=index",
-                              "-of", "csv=p=0", path], capture_output=True, text=True, timeout=60,
-                             creationflags=NO_WINDOW).stdout
-        return len([l for l in out.splitlines() if l.strip()])
-    except (OSError, subprocess.SubprocessError):
-        return -1
-
-
-def hb_describe(o):
-    p = hb_preset_chosen(o)
-    return "HandBrake preset '%s'" % p if p else "HandBrake %s" % hb_encoder_name(o)
-
-
-def encode_file_hb(path, o, on_pct, set_proc, log, stopped=lambda: False):
-    """encode_file() with HandBrakeCLI. -> description of what was used"""
-    ffmpeg = tool_path("ffmpeg")
-    if not ffmpeg:
-        raise RuntimeError("ffmpeg is needed too (it copies the subtitles back in)")
-    hb = tool_path("HandBrakeCLI")
-    if not hb:
-        install_handbrake(log)
-        hb = tool_path("HandBrakeCLI")
-    base, ext = os.path.splitext(path)
-    fmt = HB_FORMATS[ext.lower()]
-    hb_out = base + ".hbenc" + ext
-    tmp = base + ".mrenc" + ext
-    preset = hb_preset_chosen(o)
-    pfile = _custom(o, "hb_preset_file")
-
-    def cleanup():
-        for f in (hb_out, tmp):
-            if os.path.exists(f):
-                os.remove(f)
-
-    def run(args):
-        p = popen([hb] + args)
-        set_proc(p)
-        tail = []
-        for line in p.stdout:
-            line = line.strip()
-            m = re.match(r"^Encoding: task \d+ of \d+, ([\d.]+) %", line)
-            if m:
-                on_pct(min(98.0, float(m.group(1))))
-            elif line and not line.startswith("Encoding:"):
-                tail = (tail + [line])[-8:]
-        return p.wait(), tail
-
-    io = ["-i", path, "-o", hb_out, "-f", fmt, "-s", "none", "--markers"]
-    if preset:
-        args = (["--preset-import-file", pfile] if pfile and os.path.isfile(pfile) else []) + ["-Z", preset] + io
-        used = "HandBrake preset '%s'" % preset
-        code, tail = run(args)
-    else:
-        have = hb_encoders(hb)
-        enc = hb_encoder_name(o, have or None)
-        code, tail = run(io + hb_video_args(hb, enc, o) + hb_audio_args(o) + hb_resize_args(o))
-        if code != 0 and not stopped() and enc.replace("_10bit", "") not in HB_CPU:
-            log("The graphics card couldn't encode this one in HandBrake - using the CPU instead.")
-            if tail:
-                log("  (HandBrake said: %s)" % tail[-1])
-            enc = hb_encoder_name(o, have or None, force_cpu=True)
-            code, tail = run(io + hb_video_args(hb, enc, o) + hb_audio_args(o) + hb_resize_args(o))
-        used = "HandBrake %s" % enc
-    if code != 0 or not os.path.isfile(hb_out) or os.path.getsize(hb_out) == 0:
-        cleanup()
-        if stopped():
-            raise RuntimeError("stopped")
-        errs = [t for t in tail if "error" in t.lower() or "invalid" in t.lower()] or tail
-        raise RuntimeError("HandBrake failed: %s" % (errs[-1] if errs else "exit code %s" % code))
-    # put the original subtitles, global tags and audio track names back
-    a = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", hb_out, "-i", path,
-         "-map", "0:v", "-map", "0:a?", "-map", "1:s?", "-map_metadata", "1", "-map_chapters", "0", "-c", "copy"]
-    # Naming any stream's tags turns off ffmpeg's automatic copying for all of them, so name every one:
-    # video and subtitles from the original, audio from the original when HandBrake kept every track.
-    n_audio = _stream_count(hb_out, "a")
-    src_audio = "1" if n_audio > 0 and n_audio == _stream_count(path, "a") else "0"
-    a += ["-map_metadata:s:v:0", "1:s:v:0"]
-    for i in range(max(0, n_audio)):
-        a += ["-map_metadata:s:a:%d" % i, "%s:s:a:%d" % (src_audio, i)]
-    for i in range(max(0, _stream_count(path, "s"))):
-        a += ["-map_metadata:s:s:%d" % i, "1:s:s:%d" % i]
-    if fmt == "av_mp4":
-        a += ["-c:s", "mov_text", "-movflags", "+faststart"]
-    a.append(tmp)
-    p = popen(a)
-    set_proc(p)
-    msg = [l.strip() for l in p.stdout if l.strip()]
-    if p.wait() != 0 or not os.path.isfile(tmp) or os.path.getsize(tmp) == 0:
-        cleanup()
-        if stopped():
-            raise RuntimeError("stopped")
-        raise RuntimeError("couldn't put the subtitles back after HandBrake: %s" % (msg[-1] if msg else "ffmpeg failed"))
-    os.replace(tmp, path)
-    os.remove(hb_out)
-    on_pct(99.9)
-    return used
 
 
 def test_encoder(ffmpeg, enc):
@@ -2128,8 +1802,6 @@ def install_subtitleedit(log):
 
 EXTRA_TOOLS = (("mkvmerge", "mkvmerge", "install_mkvmerge"), ("SubtitleEdit", "SubtitleEdit", "install_subtitleedit"),
                ("jq", "jq", "install_jq"), ("wget", "wget", "install_wget"), ("7zr", "7zr", "install_7zr"))
-# 1.0.9: only fetched when it's chosen (Settings > Encoding > Encoder: HandBrake), never on first start
-OPTIONAL_TOOLS = (("HandBrakeCLI (nightly)", "HandBrakeCLI", "install_handbrake"),)
 EXTRA_RETRY_FILE = os.path.join(BIN_DIR, ".extras-tried")
 
 
@@ -2282,7 +1954,6 @@ TOOL_FILES = {
     "SubtitleEdit": (("SubEdit",), "install_subtitleedit", 7),
     "jq": (("jq.exe",), "install_jq", 30),
     "wget": (("wget.exe",), "install_wget", 30),
-    "HandBrakeCLI": (("HandBrakeCLI",), "install_handbrake", 1),  # nightly builds: checked daily
 }
 
 
@@ -2315,8 +1986,6 @@ def latest_tool_ref(name):
         page = fetch_text("https://mkvtoolnix.download/windows/releases/", timeout=90)
         vers = re.findall(r'href="(\d+\.\d+(?:\.\d+)?)/"', page)
         return max(vers, key=lambda v: tuple(int(x) for x in v.split("."))) if vers else None
-    if name == "HandBrakeCLI":
-        return _hb_asset()
     if name == "wget":
         page = fetch_text("https://eternallybored.org/misc/wget/", timeout=30)
         vers = re.findall(r"(\d+\.\d+(?:\.\d+)?)/64/wget\.exe", page)
@@ -2431,7 +2100,7 @@ def vanished_tools():
     seen = _load_json(SEEN_TOOLS_FILE, [])
     gone = [t for t in seen if not tool_path(t)]
     now = sorted(set([t for t in seen if tool_path(t)] +
-                     [n for _, n, _ in SETUP_TOOLS + EXTRA_TOOLS + OPTIONAL_TOOLS if tool_path(n)]))
+                     [n for _, n, _ in SETUP_TOOLS + EXTRA_TOOLS if tool_path(n)]))
     _save_json(SEEN_TOOLS_FILE, now)
     return gone
 
@@ -3865,7 +3534,7 @@ def load_settings():
                        ("cookies", BROWSERS), ("enc_codec", ENC_CODECS), ("enc_quality", ENC_QUALITY),
                        ("enc_speed", ENC_SPEED), ("enc_resize", ENC_RESIZE), ("enc_audio", ENC_AUDIO),
                        ("enc_vendor", [""] + GPU_VENDORS), ("nfo", NFO_STYLES), ("min_quality", MIN_QUALITIES),
-                       ("parallel", PARALLEL), ("enc_engine", ENC_ENGINES)):
+                       ("parallel", PARALLEL)):
         if s[k] not in choices:
             s[k] = DEFAULTS[k]
     if not str(s["outdir"]).strip():
@@ -5486,14 +5155,6 @@ class App:
         r = row(e)
         ttk.Checkbutton(r, text="Use the graphics card", variable=self.v["enc_gpu"]).pack(side="left")
         self._combo(r, "Card", "enc_vendor", GPU_VENDORS, 8)
-        r = row(e)  # 1.0.9: exact values for people who know their encoder
-        ttk.Label(r, text="RF / CQ").pack(side="left")
-        ttk.Entry(r, textvariable=self.v["enc_rf"], width=6).pack(side="left", padx=4)
-        ttk.Label(r, text="(blank = from Quality)", foreground="#888").pack(side="left")
-        ttk.Label(r, text="Encoder preset").pack(side="left", padx=(12, 4))
-        ttk.Entry(r, textvariable=self.v["enc_preset"], width=10).pack(side="left")
-        ttk.Label(r, text="(blank = from Speed; e.g. 4 for SVT-AV1, slow for x265)", foreground="#888").pack(side="left", padx=4)
-        self._handbrake_settings(e, row)
         hw_text = tk.StringVar(value="Not checked yet - press the button to test this PC's CPU and graphics card.")
         r = row(e)
         ttk.Button(r, text="Check my hardware and recommend",
@@ -5524,7 +5185,7 @@ class App:
 
         def reinstall():
             sel = tv.selection()
-            fn = next((f for label, _, f in self.SETUP_TOOLS + EXTRA_TOOLS + OPTIONAL_TOOLS if sel and label == sel[0]), None)
+            fn = next((f for label, _, f in self.SETUP_TOOLS + EXTRA_TOOLS if sel and label == sel[0]), None)
             if fn:
                 self.tool_job(globals()[fn])
         ttk.Button(r, text="Update yt-dlp now", command=self.update_ytdlp).pack(side="left")
@@ -5555,94 +5216,10 @@ class App:
         ttk.Button(bottom, text="Close", command=close).pack(side="right")
         win.protocol("WM_DELETE_WINDOW", close)
 
-    # ---- 1.0.9: HandBrake settings (part of Settings > Encoding)
-    def _handbrake_settings(self, e, row):
-        ttk.Separator(e).pack(fill="x", padx=10, pady=(8, 2))
-        r = row(e)
-        self._combo(r, "Encoder", "enc_engine", ENC_ENGINES, 11, first=True).bind(
-            "<<ComboboxSelected>>", lambda _e: self._hb_engine_changed())
-        hb_state = tk.StringVar()
-        ttk.Label(r, textvariable=hb_state, foreground="#888").pack(side="left", padx=8)
-        ttk.Checkbutton(e, text="10-bit for H.265 and AV1 (HandBrake) - less banding, usually smaller files",
-                        variable=self.v["enc_10bit"]).pack(anchor="w", padx=10, pady=1)
-        r = row(e)
-        ttk.Label(r, text="HandBrake preset").pack(side="left")
-        if not self.v["hb_preset"].get():
-            self.v["hb_preset"].set(HB_NONE)
-        box = ttk.Combobox(r, textvariable=self.v["hb_preset"], values=[HB_NONE], width=38)
-        box.pack(side="left", padx=4)
-        pf = tk.StringVar()
-
-        def show_file():
-            f = self.v["hb_preset_file"].get()
-            pf.set(("Presets file: %s" % os.path.basename(f)) if f else
-                   "No presets file - HandBrake's own presets are listed. Export yours from HandBrake "
-                   "(Presets > Export) and load it here.")
-
-        def pick_file():
-            f = filedialog.askopenfilename(title="Your exported HandBrake presets", parent=e,
-                                           filetypes=[("HandBrake presets", "*.json"), ("All files", "*.*")])
-            if f:
-                self.v["hb_preset_file"].set(f)
-                show_file()
-                refresh()
-
-        def clear_file():
-            self.v["hb_preset_file"].set("")
-            show_file()
-            refresh()
-        ttk.Button(r, text="Load presets file ...", command=pick_file).pack(side="left", padx=4)
-        ttk.Button(r, text="Clear", command=clear_file).pack(side="left")
-        ttk.Label(e, textvariable=pf, foreground="#888", wraplength=640, justify="left").pack(anchor="w", padx=10)
-        ttk.Label(e, foreground="#888", wraplength=640, justify="left", text=(
-            "HandBrake uses its nightly build (downloaded when you first pick it, then kept up to date daily). "
-            "With a preset chosen, the preset decides the video and audio settings; otherwise the settings above "
-            "are used. The container stays what you chose on the main screen (MKV/MP4), and the original "
-            "subtitles are always copied back in unchanged, forced flags included.")).pack(anchor="w", padx=10, pady=(4, 0))
-
-        def refresh():
-            pfile = self.v["hb_preset_file"].get()  # Tk variables can only be read on this thread
-
-            def work():
-                hb = tool_path("HandBrakeCLI")
-                names = hb_presets(hb, pfile)
-                state = ("HandBrakeCLI: %s" % tool_version("HandBrakeCLI").split("   (")[0]) if hb else (
-                    "HandBrakeCLI isn't here yet - it's downloaded when you pick HandBrake" if IS_WIN else
-                    "HandBrakeCLI not found - install it:  %s" % SYSTEM_INSTALL["HandBrakeCLI"])
-
-                def show():
-                    try:
-                        box.configure(values=[HB_NONE] + names)
-                        hb_state.set(state)
-                    except tk.TclError:
-                        pass
-                self.q.put(("call", show))
-            threading.Thread(target=work, daemon=True).start()
-        self._hb_refresh = refresh
-        show_file()
-        refresh()
-
-    def _hb_engine_changed(self):
-        self.save_settings()
-        if self.v["enc_engine"].get() != "HandBrake" or tool_path("HandBrakeCLI") or not IS_WIN:
-            return getattr(self, "_hb_refresh", lambda: None)()
-        if getattr(self, "_hb_getting", False):
-            return
-        self._hb_getting = True
-
-        def work():
-            try:
-                install_handbrake(lambda t: self.q.put(("log", t)))
-            except Exception as err:
-                self.q.put(("log", "Couldn't get HandBrakeCLI: %s (it's tried again when it's needed)" % err))
-            self._hb_getting = False
-            self.q.put(("call", lambda: getattr(self, "_hb_refresh", lambda: None)()))
-        threading.Thread(target=work, daemon=True).start()
-
     def _fill_tool_versions(self, tv):
         """Show each helper tool's version in the Settings list (looked up off the window's thread)."""
         def work():
-            rows = [(label, tool_version(name)) for label, name, _ in self.SETUP_TOOLS + EXTRA_TOOLS + OPTIONAL_TOOLS]
+            rows = [(label, tool_version(name)) for label, name, _ in self.SETUP_TOOLS + EXTRA_TOOLS]
 
             def show():
                 try:
@@ -6604,7 +6181,7 @@ class App:
                 return "Stopped", label
             name = os.path.basename(f)
             before = os.path.getsize(f)
-            self.log("Re-encoding %s (%s) ..." % (name, hb_describe(o) if o.get("enc_engine") == "HandBrake" else encoder_name(o)))
+            self.log("Re-encoding %s (%s) ..." % (name, encoder_name(o)))
             last = [0.0]
 
             def on_pct(v, n=n):
