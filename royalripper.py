@@ -153,6 +153,7 @@ DEFAULTS = {
     "nfo": "Scene (text)", "thumbfile": True, "search_in": "All 5 channels", "cfg_ver": "2",
     "use_mkvmerge": True, "min_quality": "720p", "parallel": "1", "tools_autoupdate": True,
     "sched_on": False, "sched_rate": "2M", "sched_from": "07:00", "sched_to": "23:00",
+    "app_updates": True, "skip_version": "",
 }
 HISTORY_FILE = os.path.join(BASE_DIR, "history.jsonl")
 WATCH_FILE = os.path.join(BASE_DIR, "watchlist.json")
@@ -2627,6 +2628,104 @@ def list_entries(exe, url, o, log=lambda t: None):
     return out
 
 
+# ------------------------------------------------------------ 1.0.8: Royal Ripper updates and bug reports on GitHub
+APP_REPO = "cookedagain/TasRip"  # GitHub forwards this to the new address if the repo is renamed
+APP_REPO_URL = "https://github.com/" + APP_REPO
+APP_ASSET = r"^(RoyalRipper|TasRip)-v[\d.]+\.zip$"  # the zip attached to each release
+LAST_APP_CHECK_FILE = os.path.join(BIN_DIR, ".last-app-check")
+APP_UPDATE_DIR = os.path.join(BIN_DIR, ".app-update")
+
+
+def version_tuple(v):
+    """'v1.0.10' -> (1, 0, 10); anything that isn't a version -> ()."""
+    m = re.match(r"^\s*[vV]?(\d+(?:\.\d+)*)", v or "")
+    return tuple(int(x) for x in m.group(1).split(".")) if m else ()
+
+
+def check_app_update():
+    """Ask GitHub for the latest Royal Ripper release.
+    -> {"version", "zip", "page", "notes"} if it's newer than this one, else None."""
+    rel = gh_json(GITHUB_API + "/repos/" + APP_REPO + "/releases/latest")
+    tag = rel.get("tag_name") or ""
+    if not version_tuple(tag) or version_tuple(tag) <= version_tuple(VERSION):
+        return None
+    asset = next((a for a in rel.get("assets") or [] if re.match(APP_ASSET, a.get("name") or "", re.I)), None)
+    return {"version": tag.lstrip("vV"), "zip": asset.get("browser_download_url") if asset else None,
+            "page": rel.get("html_url") or APP_REPO_URL + "/releases/latest", "notes": rel.get("body") or ""}
+
+
+def _bat_path(p):
+    return p.replace("%", "%%")  # a % in a folder name would otherwise be read as a variable
+
+
+def prepare_app_update(info, log=print):
+    """Download and unpack a release, then write the script that installs it once this window
+    has closed: it waits for Royal Ripper to exit, copies the new files over the app folder
+    (settings, archive, downloads and tools aren't in the zip, so they're kept) and runs
+    "Update RoyalRipper.bat", which tidies old files, rebuilds the exe if used and restarts.
+    Windows only. -> path of the script to start."""
+    if not info.get("zip"):
+        raise RuntimeError("this release has no Royal Ripper zip attached")
+    shutil.rmtree(APP_UPDATE_DIR, ignore_errors=True)
+    os.makedirs(APP_UPDATE_DIR)
+    zpath = os.path.join(APP_UPDATE_DIR, "release.zip")
+    log("Downloading Royal Ripper v%s ..." % info["version"])
+    fetch(info["zip"], zpath, log)
+    unpacked = os.path.join(APP_UPDATE_DIR, "new")
+    with zipfile.ZipFile(zpath) as z:
+        for n in z.namelist():
+            rel = os.path.normpath(n)
+            if rel.startswith("..") or os.path.isabs(rel) or ":" in rel:  # never write outside the folder
+                raise RuntimeError("the release zip has an unsafe path in it: %s" % n)
+        z.extractall(unpacked)
+    found = glob.glob(os.path.join(unpacked, "royalripper.py")) + glob.glob(os.path.join(unpacked, "*", "royalripper.py"))
+    if not found:
+        raise RuntimeError("royalripper.py isn't in the release zip")
+    src = os.path.dirname(found[0])
+    with open(found[0], encoding="utf-8") as f:
+        m = re.search(r'^VERSION = "([\d.]+)"', f.read(), re.M)
+    if not m or version_tuple(m.group(1)) <= version_tuple(VERSION):
+        raise RuntimeError("the downloaded zip isn't newer than this version")
+    pids = {os.getpid()}
+    if getattr(sys, "frozen", False):
+        pids.add(os.getppid())  # a one-file exe runs as two processes; the outer one holds the exe open
+    wait = "".join(':wait%d\r\ntasklist /fi "PID eq %d" 2>nul | find " %d " >nul\r\n'
+                   'if not errorlevel 1 (timeout /t 1 /nobreak >nul & goto wait%d)\r\n' % (p, p, p, p) for p in pids)
+    script = os.path.join(APP_UPDATE_DIR, "install-update.bat")
+    with open(script, "w", newline="") as f:
+        f.write("@echo off\r\ntitle %s update to v%s\r\necho Installing %s v%s - waiting for %s to close ...\r\n"
+                % (APP_NAME, info["version"], APP_NAME, info["version"], APP_NAME) + wait +
+                'robocopy "%s" "%s" /E /R:5 /W:2 /NFL /NDL /NJH /NJS /NP >nul\r\n'
+                "if errorlevel 8 goto failed\r\n"
+                'cd /d "%s"\r\n'
+                'start "" cmd /c call "%s"\r\n'
+                "exit /b 0\r\n"
+                ":failed\r\n"
+                "echo.\r\necho Couldn't copy the new files into the %s folder (is a file open somewhere?).\r\n"
+                "echo Your settings and downloads are untouched. Get the zip from the releases page instead:\r\n"
+                "echo %s/releases/latest\r\npause\r\nexit /b 1\r\n"
+                % (_bat_path(src), _bat_path(BASE_DIR), _bat_path(BASE_DIR),
+                   _bat_path(os.path.join(BASE_DIR, "Update RoyalRipper.bat")), APP_NAME, APP_REPO_URL))
+    return script
+
+
+def issue_url(report_path, item=None):
+    """A new-issue page on GitHub with the basics filled in; the report zip is attached by hand."""
+    if item:
+        title = "Download failed: %s" % scrub(str(item.get("title") or item.get("url") or ""))[:90]
+        what = ["**Link:** %s" % scrub(str(item.get("url") or "")),
+                "**Status:** %s" % scrub(str(item.get("shown") or item.get("status") or ""))]
+    else:
+        title = "Problem: (describe it in a few words)"
+        what = []
+    body = "\n".join(
+        ["**What happened:**", "", "(what you did, what you expected, what you got instead)", ""] + what +
+        ["", "**Version:** %s v%s%s" % (APP_NAME, VERSION, " (exe)" if getattr(sys, "frozen", False) else ""),
+         "**System:** %s" % platform.platform(), "",
+         "**Report:** drag `%s` from the folder that just opened into this box." % os.path.basename(report_path)])
+    return APP_REPO_URL + "/issues/new?" + urllib.parse.urlencode({"title": title, "body": body[:6000]})
+
+
 # ------------------------------------------------------------ app updates and migration
 OLD_NAMES = ("TasRip", "MediaRipper")
 
@@ -3497,6 +3596,8 @@ class App:
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         root.after(100, self._pump)
         root.after(300, self._check_tools)
+        shutil.rmtree(APP_UPDATE_DIR, ignore_errors=True)  # left over from an update that's now installed
+        root.after(30000, self._auto_app_check)
         auto_assign_engines(self.log)
         note = stale_exe_note()
         if note:
@@ -3523,6 +3624,7 @@ class App:
         tools.add_command(label="Pick episodes from a season / feed ...", command=self.pick_clicked)
         tools.add_command(label="Update yt-dlp now", command=self.update_ytdlp)
         tools.add_command(label="Update all the other tools now", command=lambda: self._auto_tool_update(force=True))
+        tools.add_command(label="Check for a %s update" % APP_NAME, command=lambda: self._auto_app_check(force=True))
         tools.add_command(label="Diagnose a URL ...", command=self.diagnose_clicked)
         tools.add_command(label="Site login for this session (email + password) ...", command=self.login_dialog)
         tools.add_command(label="Site engines (custom yt-dlp builds) ...", command=self.engines_dialog)
@@ -3534,6 +3636,7 @@ class App:
         tools.add_separator()
         tools.add_command(label="Open app folder", command=lambda: open_path(BASE_DIR))
         tools.add_command(label="Open logs folder", command=lambda: (os.makedirs(LOG_DIR, exist_ok=True), open_path(LOG_DIR)))
+        tools.add_command(label="%s on GitHub (releases, issues)" % APP_NAME, command=lambda: webbrowser.open(APP_REPO_URL))
         menu.add_cascade(label="Tools", menu=tools)
         menu.add_command(label="\u263e Dark mode", command=self.toggle_dark)
         self.menubar, self.dark_index = menu, menu.index("end")
@@ -4259,11 +4362,9 @@ class App:
 
             def done():
                 self.log("Report saved: %s" % path)
-                messagebox.showinfo(APP_NAME, "Saved a report for this download in the Royal Ripper folder:\n\n%s\n\n"
-                                              "It has everything Royal Ripper logged for it. Send that file to whoever "
-                                              "is helping you (passwords and your user name are removed)."
-                                    % os.path.basename(path))
-                show_in_folder(path)
+                self._offer_issue(path, "Saved a report for this download in the Royal Ripper folder:\n\n%s\n\n"
+                                        "It has everything Royal Ripper logged for it (passwords and your user "
+                                        "name are removed)." % os.path.basename(path), item=item)
             self.q.put(("call", done))
         threading.Thread(target=work, daemon=True).start()
 
@@ -5020,6 +5121,8 @@ class App:
         ttk.Label(r, text="GB free  (0 = never)").pack(side="left")
         ttk.Checkbutton(g, text="Check the watch list for new episodes once a day",
                         variable=self.v["watch_daily"]).pack(anchor="w", **pad)
+        ttk.Checkbutton(g, text="Check GitHub for a new %s version once a day" % APP_NAME,
+                        variable=self.v["app_updates"]).pack(anchor="w", **pad)
         ttk.Checkbutton(g, text="Use Windows certificate checks (for antivirus HTTPS scanning / filtered networks)",
                         variable=self.v["syscerts"], command=self._syscerts_changed).pack(anchor="w", **pad)
         r = row(g)
@@ -5318,11 +5421,112 @@ class App:
 
             def done():
                 self.log("Problem report saved: %s" % path)
-                messagebox.showinfo(APP_NAME, "Saved a problem report in the Royal Ripper folder:\n\n%s\n\n"
-                                              "Send that file to whoever is helping you. Your passwords, "
-                                              "email and Windows user name are not in it." % os.path.basename(path))
-                show_in_folder(path)
+                self._offer_issue(path, "Saved a problem report in the Royal Ripper folder:\n\n%s\n\n"
+                                        "Your passwords, email and Windows user name are not in it."
+                                        % os.path.basename(path))
             self.q.put(("call", done))
+        threading.Thread(target=work, daemon=True).start()
+
+    # ---- 1.0.8: report on GitHub
+    def _offer_issue(self, path, saved_text, item=None):
+        """After a report is made: open a GitHub issue for it (with the zip's folder beside it), or just the folder."""
+        if messagebox.askyesno(APP_NAME, saved_text + "\n\nReport it on GitHub now? Your browser opens a new issue "
+                               "with the details filled in, and the folder with the zip opens beside it - drag the "
+                               "zip into the issue, say what happened, then press Create. You need a free GitHub "
+                               "account, and issues are public (the zip has your passwords, email and user name "
+                               "removed).\n\nNo = just show the file, to send it some other way."):
+            webbrowser.open(issue_url(path, item))
+            self.log("Opened a new GitHub issue - attach %s to it." % os.path.basename(path))
+        show_in_folder(path)
+
+    # ---- 1.0.8: Royal Ripper updates from GitHub
+    def _auto_app_check(self, force=False):
+        if not force and (not self.v["app_updates"].get() or stamp_age(LAST_APP_CHECK_FILE) < 20 * 3600):
+            self.root.after(3600 * 1000, self._auto_app_check)
+            return
+        if force:
+            self.log("Checking GitHub for a new %s version ..." % APP_NAME)
+
+        def work():
+            try:
+                info = check_app_update()
+            except Exception as e:
+                if force:
+                    self.q.put(("call", lambda e=e: messagebox.showwarning(
+                        APP_NAME, "Couldn't check GitHub for an update:\n\n%s" % e)))
+                else:
+                    self.q.put(("log", "Couldn't check GitHub for a %s update (%s) - will try again later." % (APP_NAME, e)))
+                return
+            write_stamp(LAST_APP_CHECK_FILE)
+            self.q.put(("call", lambda: self._app_update_found(info, force)))
+        threading.Thread(target=work, daemon=True).start()
+        if not force:
+            self.root.after(3600 * 1000, self._auto_app_check)
+
+    def _app_update_found(self, info, force=False):
+        if not info:
+            if force:
+                messagebox.showinfo(APP_NAME, "You have the newest version (v%s)." % VERSION)
+            return
+        if not force and info["version"] == self.v["skip_version"].get():
+            return
+        self.log("%s v%s is out (you have v%s): %s" % (APP_NAME, info["version"], VERSION, info["page"]))
+        if self.running and not force:
+            self.status.set("%s v%s is out - Tools > Check for a %s update to install it"
+                            % (APP_NAME, info["version"], APP_NAME))
+            return
+        win = tk.Toplevel(self.root)
+        win.title("%s v%s" % (APP_NAME, info["version"]))
+        win.transient(self.root)
+        ttk.Label(win, text="%s v%s is out - you have v%s." % (APP_NAME, info["version"], VERSION),
+                  font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=14, pady=(14, 6))
+        notes = tk.Text(win, width=80, height=14, wrap="word", relief="flat")
+        notes.insert("1.0", info["notes"].replace("\r\n", "\n").strip() or "(no notes)")
+        notes.config(state="disabled")
+        notes.pack(fill="both", expand=True, padx=14, pady=4)
+        can_install = IS_WIN and bool(info.get("zip"))
+        ttk.Label(win, wraplength=560, justify="left", text=(
+            "Update now downloads it, closes %s, puts the new files in this folder and starts it again. "
+            "Your settings, archive, watch list, history and downloads are kept." % APP_NAME) if can_install else
+            "Download it from the release page and unzip it over this folder.").pack(anchor="w", padx=14, pady=6)
+        b = ttk.Frame(win)
+        b.pack(fill="x", padx=14, pady=(4, 14))
+
+        def skip():
+            self.v["skip_version"].set(info["version"])
+            self.save_settings()
+            win.destroy()
+        if can_install:
+            ttk.Button(b, text="Update now", command=lambda: (win.destroy(), self._install_app_update(info))).pack(side="left")
+        ttk.Button(b, text="Open the release page", command=lambda: webbrowser.open(info["page"])).pack(side="left", padx=6)
+        ttk.Button(b, text="Later", command=win.destroy).pack(side="right")
+        ttk.Button(b, text="Skip this version", command=skip).pack(side="right", padx=6)
+
+    def _install_app_update(self, info):
+        if self.running or self.live_procs or self.busy_tools:
+            return messagebox.showinfo(APP_NAME, "Wait for downloads, recordings and tool updates to finish first.")
+        self.log("Getting %s v%s ..." % (APP_NAME, info["version"]))
+
+        def work():
+            try:
+                script = prepare_app_update(info, lambda t: self.q.put(("log", t)))
+            except Exception as e:
+                self.q.put(("call", lambda e=e: messagebox.showerror(
+                    APP_NAME, "Couldn't get the update:\n\n%s\n\nYou can download it from the release page "
+                    "instead." % e)))
+                return
+
+            def go():
+                if self.running or self.live_procs:
+                    return messagebox.showinfo(APP_NAME, "A download started meanwhile - try the update again when it's done.")
+                try:
+                    subprocess.Popen(["cmd", "/c", script], cwd=APP_UPDATE_DIR, creationflags=0x00000010,  # new console
+                                     close_fds=True)
+                except OSError as e:
+                    return messagebox.showerror(APP_NAME, "Couldn't start the update: %s" % e)
+                self.log("Closing to install the update ...")
+                self.on_close()
+            self.q.put(("call", go))
         threading.Thread(target=work, daemon=True).start()
 
     # ---- finished rows

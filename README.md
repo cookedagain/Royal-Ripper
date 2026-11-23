@@ -6,7 +6,9 @@ Successor to the Tas Rip Pack (formerly TasRip, and before that MediaRipper). WE
 **Get it:** download the zip from [Releases](../../releases), unzip anywhere, double-click `RoyalRipper.bat`.
 The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria2c, Streamlink, mkvmerge, SubtitleEdit, jq, wget).
 
-**Update:** unzip the new version over your folder, then run `Update RoyalRipper.bat`.
+**Update:** Royal Ripper checks this page for a new release once a day and offers to install it (or Tools > Check for a Royal Ripper update). By hand: unzip the new version over your folder, then run `Update RoyalRipper.bat`.
+
+**Something not working?** Press "Report a problem" in the app - it makes a report zip and opens a new [issue](../../issues) here for it.
 
 **Coming from TasRip?** This is the same app, renamed. See [New in 1.0.8](#new-in-108) below.
 
@@ -45,6 +47,18 @@ The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria
     `RoyalRipper.exe` if you used one.
 
   Either way, point any shortcuts at `RoyalRipper.bat` instead of `TasRip.bat`.
+- **Royal Ripper updates itself from GitHub:** once a day it checks the
+  [releases](../../releases) for a newer version. When there is one it shows what's new, and
+  Update now downloads it, closes Royal Ripper, puts the new files in the folder (settings,
+  archive, watch list, history and downloads are kept), runs the updater and starts it again.
+  Or open the release page, choose Later, or Skip this version.
+  Tools > Check for a Royal Ripper update checks straight away; Settings > General turns the
+  daily check off.
+- **Reports go to GitHub:** after "Report a problem" (or a failed row's report), Royal Ripper
+  offers to open a new [GitHub issue](../../issues) with the version, Windows version and the
+  failed link filled in, and opens the folder with the report zip so you can drag it in.
+  You need a free GitHub account, and issues are public - the zip has passwords, email and
+  your user name removed.
 - **At once** (main options row): download 1, 2 or 3 episodes at the same time.
 - **The queue is remembered:** close Royal Ripper with downloads waiting or failed and they're back
   next time - press Start to carry on.
@@ -103,6 +117,8 @@ into the Royal Ripper folder and they run as before - including the iView and 10
 yt-dlp-iView-beta.exe and yt-dlp-modified.exe.
 
 ## Updating to a new version
+
+Royal Ripper checks GitHub once a day and offers to update itself (see New in 1.0.8). To do it by hand:
 
 1. Close Royal Ripper.
 2. Unzip the new version over your Royal Ripper folder (say Yes to replacing files).
@@ -282,7 +298,9 @@ on the clipboard to paste to whoever is helping you.
 
 - Press "Report a problem" (bottom right). It saves a zip in the Royal Ripper folder with your
   settings, tool versions and recent logs - email, passwords, tokens and your Windows user
-  name are removed. Send that file to whoever is helping you.
+  name are removed. Then it offers to open a new [GitHub issue](../../issues) for it: drag the
+  zip into the issue, say what happened, and press Create. Or send the zip to whoever is
+  helping you.
 - "SSL: CERTIFICATE_VERIFY_FAILED": usually antivirus HTTPS scanning or a filtered network.
   Royal Ripper switches to Windows' own certificate checks by itself and retries. If it says
   "expired" or "not yet valid", fix the PC's clock.
