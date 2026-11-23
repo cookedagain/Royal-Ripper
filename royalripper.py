@@ -2629,7 +2629,7 @@ def list_entries(exe, url, o, log=lambda t: None):
 
 
 # ------------------------------------------------------------ 1.0.8: Royal Ripper updates and bug reports on GitHub
-APP_REPO = "cookedagain/TasRip"  # GitHub forwards this to the new address if the repo is renamed
+APP_REPO = "cookedagain/Royal-Ripper"
 APP_REPO_URL = "https://github.com/" + APP_REPO
 APP_ASSET = r"^(RoyalRipper|TasRip)-v[\d.]+\.zip$"  # the zip attached to each release
 LAST_APP_CHECK_FILE = os.path.join(BIN_DIR, ".last-app-check")
