@@ -4,7 +4,7 @@ A Windows GUI for yt-dlp for Australian free-to-air catch-up: ABC iView, 10, SBS
 Successor to the Tas Rip Pack (formerly TasRip, and before that MediaRipper). WEB-DL only, no DRM.
 
 **Get it:** download the zip from [Releases](../../releases), unzip anywhere, double-click `RoyalRipper.bat`.
-The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria2c, Streamlink, mkvmerge, SubtitleEdit, jq, wget).
+The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria2c, Streamlink, mkvmerge, SubtitleEdit, jq).
 
 **Update:** Royal Ripper checks this page for a new release once a day and offers to install it (or Tools > Check for a Royal Ripper update). By hand: unzip the new version over your folder, then run `Update RoyalRipper.bat`.
 
@@ -36,6 +36,7 @@ The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria
 ## New in 1.0.9
 
 - **.nfo files are now off by default** for new installs. If you already use them, nothing changes - your setting is kept. To turn them on, pick *Scene (text)* or *Kodi / Jellyfin (XML)* next to **.nfo** on the main screen.
+- **wget is no longer downloaded.** Royal Ripper never used it (it was only there for old Tas Rip Pack .bat scripts), and the site it came from (eternallybored.org) was being flagged by Malwarebytes. A wget.exe you already have in `bin` stays and still works with old bats; if an old bat needs wget and you don't have it, put `wget.exe` in the `bin` folder yourself.
 
 ## New in 1.0.8
 
@@ -101,7 +102,7 @@ The first start downloads every tool it needs (yt-dlp, ffmpeg, N_m3u8DL-RE, aria
    - Royal Ripper then downloads every tool it uses into `bin`: yt-dlp, ffmpeg, N_m3u8DL-RE,
      aria2c and Streamlink, plus the Tas Rip Pack's other tools in the background:
      mkvmerge (MKVToolNix), SubtitleEdit (needs .NET Framework 4.8 - built into
-     Windows 10/11), jq, wget and 7zr (7-Zip's unpacker, used for MKVToolNix)
+     Windows 10/11), jq and 7zr (7-Zip's unpacker, used for MKVToolNix)
 
    The first start takes a few minutes; later starts are instant.
 
@@ -117,7 +118,7 @@ itself (once, a few minutes) - so nobody gets stuck on an old version.
 
 **Old Tas Rip Pack scripts:** `RoyalRipper.bat` makes an `Extractors` folder that points at `bin`, and
 the tools sit where the scripts expect them (yt-dlp.exe, jq.exe, aria2c.exe, ffmpeg.exe,
-mkvmerge.exe, N_m3u8DL-RE.exe, wget.exe, `SubEdit\SubtitleEdit.exe`). Drop the old .bat files
+mkvmerge.exe, N_m3u8DL-RE.exe, `SubEdit\SubtitleEdit.exe`). Drop the old .bat files
 into the Royal Ripper folder and they run as before - including the iView and 10 bats that use
 yt-dlp-iView-beta.exe and yt-dlp-modified.exe.
 

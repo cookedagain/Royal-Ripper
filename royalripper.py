@@ -1686,7 +1686,7 @@ def save_thumbnail(url, dest, log=lambda t: None):
 
 
 # ------------------------------------------------------------ the Tas Rip Pack's other tools
-# jq, wget, mkvmerge (MKVToolNix) and SubtitleEdit, laid out the way the pack's Extractors folder
+# jq, mkvmerge (MKVToolNix) and SubtitleEdit, laid out the way the pack's Extractors folder
 # was (mkvmerge.exe and jq.exe in bin, SubtitleEdit in bin\SubEdit), plus 7zr to unpack MKVToolNix.
 def _need_windows(name):
     if not IS_WIN:
@@ -1700,20 +1700,6 @@ def install_jq(log):
     if not url:
         raise RuntimeError("couldn't find jq's Windows download")
     fetch(url, os.path.join(BIN_DIR, "jq.exe"), log)
-
-
-def install_wget(log):
-    _need_windows("wget")
-    log("Downloading wget ...")
-    ver = "1.21.4"
-    try:
-        page = fetch_text("https://eternallybored.org/misc/wget/", timeout=20)
-        found = re.findall(r"(\d+\.\d+(?:\.\d+)?)/64/wget\.exe", page)
-        if found:
-            ver = max(found, key=lambda v: tuple(int(x) for x in v.split(".")))
-    except Exception:
-        pass
-    fetch("https://eternallybored.org/misc/wget/%s/64/wget.exe" % ver, os.path.join(BIN_DIR, "wget.exe"), log)
 
 
 def install_7zr(log):
@@ -1801,7 +1787,9 @@ def install_subtitleedit(log):
 
 
 EXTRA_TOOLS = (("mkvmerge", "mkvmerge", "install_mkvmerge"), ("SubtitleEdit", "SubtitleEdit", "install_subtitleedit"),
-               ("jq", "jq", "install_jq"), ("wget", "wget", "install_wget"), ("7zr", "7zr", "install_7zr"))
+               ("jq", "jq", "install_jq"), ("7zr", "7zr", "install_7zr"))
+# 1.0.9: wget is no longer downloaded - nothing in Royal Ripper uses it, and its download site was being
+# flagged by Malwarebytes. Old Tas Rip Pack bats still find a wget.exe that's already in bin or on the PATH.
 EXTRA_RETRY_FILE = os.path.join(BIN_DIR, ".extras-tried")
 
 
@@ -1953,7 +1941,6 @@ TOOL_FILES = {
     "mkvmerge": (("mkvmerge.exe", "mkvextract.exe", "mkvinfo.exe", "mkvpropedit.exe"), "install_mkvmerge", 7),
     "SubtitleEdit": (("SubEdit",), "install_subtitleedit", 7),
     "jq": (("jq.exe",), "install_jq", 30),
-    "wget": (("wget.exe",), "install_wget", 30),
 }
 
 
@@ -1985,10 +1972,6 @@ def latest_tool_ref(name):
     if name == "mkvmerge":
         page = fetch_text("https://mkvtoolnix.download/windows/releases/", timeout=90)
         vers = re.findall(r'href="(\d+\.\d+(?:\.\d+)?)/"', page)
-        return max(vers, key=lambda v: tuple(int(x) for x in v.split("."))) if vers else None
-    if name == "wget":
-        page = fetch_text("https://eternallybored.org/misc/wget/", timeout=30)
-        vers = re.findall(r"(\d+\.\d+(?:\.\d+)?)/64/wget\.exe", page)
         return max(vers, key=lambda v: tuple(int(x) for x in v.split("."))) if vers else None
     return None
 
